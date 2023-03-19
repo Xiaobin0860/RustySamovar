@@ -1,7 +1,7 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Vector {
     #[serde(default)]
     pub x: f32,
@@ -12,7 +12,7 @@ pub struct Vector {
 }
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct TeleportPoint {
     pub scene_id: u32,
     pub point_id: u32,

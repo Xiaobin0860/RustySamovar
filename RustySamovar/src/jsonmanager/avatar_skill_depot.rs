@@ -1,13 +1,13 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-#[serde(rename_all="PascalCase")]
-#[derive(Serialize,Deserialize, Clone)]
+#[serde(rename_all = "PascalCase")]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ProudSkillOpenConfig {
     pub proud_skill_group_id: Option<u32>,
     pub need_avatar_promote_level: Option<u32>,
 }
 
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct AvatarSkillDepot {
     pub id: u32,

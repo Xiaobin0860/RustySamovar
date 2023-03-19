@@ -1,7 +1,7 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct CurveInfo {
     pub r#type: proto::GrowCurveType,
     pub arith: proto::ArithType,
@@ -9,8 +9,8 @@ pub struct CurveInfo {
 }
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct EntityCurve {
     pub level: u32,
-    pub curve_infos: Vec<CurveInfo>
+    pub curve_infos: Vec<CurveInfo>,
 }

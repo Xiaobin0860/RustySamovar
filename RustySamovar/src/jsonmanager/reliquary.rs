@@ -1,7 +1,7 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Reliquary {
     pub id: u32,
     pub main_prop_depot_id: u32,
@@ -10,12 +10,12 @@ pub struct Reliquary {
     pub append_prop_num: usize,
     pub set_id: Option<u32>,
     /*
-        Other fields omitted
-     */
+       Other fields omitted
+    */
 }
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct ReliquaryMainProp {
     pub id: u32,
     pub prop_depot_id: u32,
@@ -25,7 +25,7 @@ pub struct ReliquaryMainProp {
 }
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct ReliquaryAffix {
     pub id: u32,
     pub depot_id: u32,

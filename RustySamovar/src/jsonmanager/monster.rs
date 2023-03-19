@@ -1,25 +1,25 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 // TODO: those two structs have fields that are usually missing all together, so it makes sense to omit
 // an entire record from the list in the generator.
 // For the sake of being compatible with Dimbreath's data I've chosen this way for now - wrapping real data with Option<>
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct HpDrop {
     pub drop_id: u32,
     pub hp_percent: u32,
 }
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct HpDropWrap {
     #[serde(flatten)]
     pub data: Option<HpDrop>,
 }
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct PropGrowCurve {
     #[serde(default = "PropGrowCurve::default_type")]
     pub r#type: proto::FightPropType,
@@ -28,8 +28,12 @@ pub struct PropGrowCurve {
 }
 // TODO: fucking hack!
 impl PropGrowCurve {
-    fn default_type() -> proto::FightPropType { proto::FightPropType::FightPropNone }
-    fn default_curve() -> proto::GrowCurveType { proto::GrowCurveType::GrowCurveNone }
+    fn default_type() -> proto::FightPropType {
+        proto::FightPropType::FightPropNone
+    }
+    fn default_curve() -> proto::GrowCurveType {
+        proto::GrowCurveType::GrowCurveNone
+    }
 }
 
 /*
@@ -41,7 +45,7 @@ pub struct PropGrowCurveWrap {
 }*/
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Monster {
     pub id: u32,
     #[serde(rename = "CampID")]

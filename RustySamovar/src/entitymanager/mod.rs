@@ -1,5 +1,5 @@
-mod entity_manager;
 mod entities;
+mod entity_manager;
 
-pub use self::entity_manager::EntityManager;
 pub use self::entities::{Entity, EntityTrait};
+pub use self::entity_manager::EntityManager;

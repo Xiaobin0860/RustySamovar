@@ -10,19 +10,19 @@ use crate::IpcMessage;
 pub type Result<T> = ZmqResult<T>;
 
 /*
-  This is used to convert async operations into sync ones
- */
+ This is used to convert async operations into sync ones
+*/
 trait Block {
     fn wait(self) -> <Self as futures::Future>::Output
-        where Self: Sized, Self: futures::Future
+    where
+        Self: Sized,
+        Self: futures::Future,
     {
         futures::executor::block_on(self)
     }
 }
 
-impl<F,T> Block for F
-    where F: futures::Future<Output = T>
-{}
+impl<F, T> Block for F where F: futures::Future<Output = T> {}
 
 // -------------
 
@@ -48,7 +48,7 @@ pub struct PullSocket {
 
 impl Debug for PushSocket {
     fn fmt(&self, _: &mut Formatter<'_>) -> StdResult<(), Error> {
-        return Ok(())
+        return Ok(());
     }
 }
 
@@ -56,11 +56,11 @@ impl SubSocket {
     pub fn connect_tcp(address: &str, port: u16) -> Result<Self> {
         let mut socket = zeromq::SubSocket::new();
 
-        socket.connect(&format!("tcp://{}:{}", address, port)).wait()?;
+        socket
+            .connect(&format!("tcp://{}:{}", address, port))
+            .wait()?;
 
-        Ok(SubSocket {
-            socket: socket,
-        })
+        Ok(SubSocket { socket: socket })
     }
 
     pub fn connect_unix(address: &str) -> Result<Self> {
@@ -68,14 +68,14 @@ impl SubSocket {
 
         socket.connect(&format!("ipc://{}", address)).wait()?;
 
-        Ok(SubSocket {
-            socket: socket,
-        })
+        Ok(SubSocket { socket: socket })
     }
 
     pub fn subscribe(&mut self, topics: Vec<PacketId>) -> Result<()> {
         for topic in topics {
-            self.socket.subscribe(&IpcMessage::format_topic(topic)).wait()?;
+            self.socket
+                .subscribe(&IpcMessage::format_topic(topic))
+                .wait()?;
         }
 
         Ok(())
@@ -96,9 +96,7 @@ impl PubSocket {
 
         socket.bind(&format!("tcp://{}:{}", address, port)).wait()?;
 
-        Ok(PubSocket {
-            socket: socket,
-        })
+        Ok(PubSocket { socket: socket })
     }
 
     pub fn bind_unix(address: &str) -> Result<Self> {
@@ -106,13 +104,11 @@ impl PubSocket {
 
         socket.bind(&format!("ipc://{}", address)).wait()?;
 
-        Ok(PubSocket {
-            socket: socket,
-        })
+        Ok(PubSocket { socket: socket })
     }
 
     pub fn send(&mut self, message: IpcMessage) -> Result<()> {
-        Ok(self.socket.send( message.into() ).wait()?)
+        Ok(self.socket.send(message.into()).wait()?)
     }
 }
 
@@ -120,11 +116,11 @@ impl PushSocket {
     pub fn connect_tcp(address: &str, port: u16) -> Result<Self> {
         let mut socket = zeromq::PushSocket::new();
 
-        socket.connect(&format!("tcp://{}:{}", address, port)).wait()?;
+        socket
+            .connect(&format!("tcp://{}:{}", address, port))
+            .wait()?;
 
-        Ok(PushSocket {
-            socket: socket,
-        })
+        Ok(PushSocket { socket: socket })
     }
 
     pub fn connect_unix(address: &str) -> Result<Self> {
@@ -132,13 +128,11 @@ impl PushSocket {
 
         socket.connect(&format!("ipc://{}", address)).wait()?;
 
-        Ok(PushSocket {
-            socket: socket,
-        })
+        Ok(PushSocket { socket: socket })
     }
 
     pub fn send(&mut self, message: IpcMessage) -> Result<()> {
-        Ok(self.socket.send( message.into() ).wait()?)
+        Ok(self.socket.send(message.into()).wait()?)
     }
 }
 
@@ -148,9 +142,7 @@ impl PullSocket {
 
         socket.bind(&format!("tcp://{}:{}", address, port)).wait()?;
 
-        Ok(PullSocket {
-            socket: socket,
-        })
+        Ok(PullSocket { socket: socket })
     }
 
     pub fn bind_unix(address: &str) -> Result<Self> {
@@ -158,9 +150,7 @@ impl PullSocket {
 
         socket.bind(&format!("ipc://{}", address)).wait()?;
 
-        Ok(PullSocket {
-            socket: socket,
-        })
+        Ok(PullSocket { socket: socket })
     }
 
     pub fn recv(&mut self) -> Result<IpcMessage> {

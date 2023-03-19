@@ -1,27 +1,28 @@
-use std::sync::{mpsc::{self, Sender, Receiver}, Arc, Mutex};
-use std::thread;
-use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::collections::{HashMap, HashSet};
+use std::sync::{
+    mpsc::{self, Receiver, Sender},
+    Arc, Mutex,
+};
+use std::thread;
 
 use rs_ipc::{IpcMessage, PushSocket};
 
 use prost::Message;
 
 use proto;
-use proto::{PacketId, CombatTypeArgument, ForwardType, ProtEntityType};
+use proto::{CombatTypeArgument, ForwardType, PacketId, ProtEntityType};
 
 use packet_processor_macro::*;
 #[macro_use]
 use packet_processor::*;
-use serde_json::de::Read;
+use crate::utils::IdManager;
 use crate::{DatabaseManager, JsonManager, LuaManager};
 use rs_nodeconf::NodeConfig;
-use crate::utils::{IdManager};
 use rs_utils::TimeManager;
+use serde_json::de::Read;
 
-#[packet_processor(
-NpcTalkReq,
-)]
+#[packet_processor(NpcTalkReq)]
 pub struct NpcSubsystem {
     packets_to_send_tx: PushSocket,
 }
@@ -38,7 +39,13 @@ impl NpcSubsystem {
         return nt;
     }
 
-    fn process_npc_talk(&self, user_id: u32, metadata: &proto::PacketHead, req: &proto::NpcTalkReq, rsp: &mut proto::NpcTalkRsp) {
+    fn process_npc_talk(
+        &self,
+        user_id: u32,
+        metadata: &proto::PacketHead,
+        req: &proto::NpcTalkReq,
+        rsp: &mut proto::NpcTalkRsp,
+    ) {
         // TODO: Real server should analyze data sent by the client and produce extra packets (about quest, rewards, etc)
         // As of now we just confirming to the client that he's correct
         // TODO: We also don't consider "npc_entity_id" field here.

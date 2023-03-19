@@ -1,4 +1,4 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use crate::utils::IdManager;
 
@@ -6,7 +6,7 @@ use excel_hash_wrapper_macro::*;
 
 #[excel_hash_wrapper(gacha_card_name, gacha_image_name)]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct AvatarGachaHashes {
     /*pub gacha_card_name_hash_pre: u8,
     pub gacha_card_name_hash_suffix: u32,
@@ -27,12 +27,12 @@ pub struct AvatarGachaHashes {
     manekin_json_config
 )]
 #[derive(Serialize, Deserialize, Clone, Debug)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Avatar {
     // Entity fields
     pub id: u32,
     pub name_text_map_hash: u32,
-/*
+    /*
     pub prefab_path_hash_pre: u8,
     pub prefab_path_hash_suffix: u32,
 
@@ -62,7 +62,6 @@ pub struct Avatar {
 
     pub manekin_json_config_hash_pre: u8,
     pub manekin_json_config_hash_suffix: u32,*/
-
     //pub camp_id: Option<u32>, // Avatars don't have these
     pub lod_pattern_name: Option<String>,
 
@@ -108,12 +107,12 @@ pub struct Avatar {
     pub physical_add_hurt: f32,
     #[serde(default)]
     pub element_mastery: f32,
-    
+
     //pub prop_grow_curves: Vec<PropGrowConfig>, // TODO: unify with monster!
 
     // Avatar fields
     pub use_type: Option<String>, // TODO: actually an enum
-    pub body_type: String, // TODO: actually an enum
+    pub body_type: String,        // TODO: actually an enum
     pub icon_name: String,
     pub side_icon_name: String,
     pub quality_type: String, // TODO: actually an enum

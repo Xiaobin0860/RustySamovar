@@ -1,13 +1,13 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CostItem {
     pub id: u32,
     pub count: u32,
 }
 
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ProudSkill {
     pub proud_skill_id: u32,

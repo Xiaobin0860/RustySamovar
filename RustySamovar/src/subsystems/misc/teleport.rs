@@ -1,39 +1,44 @@
-use std::sync::{mpsc::{self, Sender, Receiver}, Arc, Mutex};
-use std::thread;
-use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::collections::{HashMap, HashSet};
+use std::sync::{
+    mpsc::{self, Receiver, Sender},
+    Arc, Mutex,
+};
+use std::thread;
 
 use rs_ipc::{IpcMessage, PushSocket};
 
 use prost::Message;
 
 use proto;
-use proto::{PacketId, CombatTypeArgument, ForwardType, ProtEntityType};
+use proto::{CombatTypeArgument, ForwardType, PacketId, ProtEntityType};
 
 use packet_processor_macro::*;
 #[macro_use]
 use packet_processor::*;
-use serde_json::de::Read;
-use crate::{DatabaseManager, JsonManager, LuaManager};
 use crate::entitymanager::EntityManager;
 use crate::luamanager::Vector;
+use crate::utils::IdManager;
+use crate::{DatabaseManager, JsonManager, LuaManager};
 use rs_nodeconf::NodeConfig;
-use crate::utils::{IdManager};
 use rs_utils::TimeManager;
+use serde_json::de::Read;
 
-#[packet_processor(
-SceneTransToPointReq,
-UnlockTransPointReq,
-)]
+#[packet_processor(SceneTransToPointReq, UnlockTransPointReq)]
 pub struct TeleportSubsystem {
     packets_to_send_tx: PushSocket,
     jm: Arc<JsonManager>,
     em: Arc<EntityManager>,
-    db: Arc<DatabaseManager>
+    db: Arc<DatabaseManager>,
 }
 
 impl TeleportSubsystem {
-    pub fn new(jm: Arc<JsonManager>, db: Arc<DatabaseManager>, em: Arc<EntityManager>, node_config: &NodeConfig) -> Self {
+    pub fn new(
+        jm: Arc<JsonManager>,
+        db: Arc<DatabaseManager>,
+        em: Arc<EntityManager>,
+        node_config: &NodeConfig,
+    ) -> Self {
         let mut nt = Self {
             packets_to_send_tx: node_config.connect_out_queue().unwrap(),
             packet_callbacks: HashMap::new(),
@@ -47,7 +52,13 @@ impl TeleportSubsystem {
         return nt;
     }
 
-    fn process_scene_trans_to_point(&self, user_id: u32, metadata: &proto::PacketHead, req: &proto::SceneTransToPointReq, rsp: &mut proto::SceneTransToPointRsp) {
+    fn process_scene_trans_to_point(
+        &self,
+        user_id: u32,
+        metadata: &proto::PacketHead,
+        req: &proto::SceneTransToPointReq,
+        rsp: &mut proto::SceneTransToPointRsp,
+    ) {
         let s_id = req.scene_id;
         let p_id = req.point_id;
 
@@ -63,10 +74,21 @@ impl TeleportSubsystem {
         };
 
         let pos = match pos {
-            Some(pos) => Vector {x: pos.x, y: pos.y, z: pos.z},
+            Some(pos) => Vector {
+                x: pos.x,
+                y: pos.y,
+                z: pos.z,
+            },
             None => {
-                println!("Warning: unknown TP point {}-{}, moving player to origin!", s_id, p_id);
-                Vector {x: 0.0, y: 500.0, z: 0.0}
+                println!(
+                    "Warning: unknown TP point {}-{}, moving player to origin!",
+                    s_id, p_id
+                );
+                Vector {
+                    x: 0.0,
+                    y: 500.0,
+                    z: 0.0,
+                }
             }
         };
 
@@ -76,10 +98,22 @@ impl TeleportSubsystem {
             None => panic!("Scene info for user {} not found!", user_id),
         };
 
-        self.em.player_teleported(user_id, pos, s_id, scene_info.scene_token, &proto::EnterType::EnterGoto);
+        self.em.player_teleported(
+            user_id,
+            pos,
+            s_id,
+            scene_info.scene_token,
+            &proto::EnterType::EnterGoto,
+        );
     }
 
-    pub fn process_unlock_trans_point(&mut self, user_id: u32, metadata: &proto::PacketHead, req: &proto::UnlockTransPointReq, rsp: &mut proto::UnlockTransPointRsp) {
+    pub fn process_unlock_trans_point(
+        &mut self,
+        user_id: u32,
+        metadata: &proto::PacketHead,
+        req: &proto::UnlockTransPointReq,
+        rsp: &mut proto::UnlockTransPointRsp,
+    ) {
         let scene_id = req.scene_id;
         let point_id = req.point_id;
 
@@ -87,9 +121,14 @@ impl TeleportSubsystem {
 
         // TODO: for unknown points we can just use player's position and add them to our collection
 
-        build_and_send!(self, user_id, metadata, ScenePointUnlockNotify {
-            scene_id: scene_id,
-            point_list: vec![point_id],
-        });
+        build_and_send!(
+            self,
+            user_id,
+            metadata,
+            ScenePointUnlockNotify {
+                scene_id: scene_id,
+                point_list: vec![point_id],
+            }
+        );
     }
 }

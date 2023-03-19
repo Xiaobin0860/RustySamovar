@@ -1,14 +1,14 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct MaterialUseParam {
     pub use_op: Option<String>, // TODO: that's an enum!
     pub use_param: Vec<String>, // Most of the time they are integers tho
 }
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Material {
     pub id: u32,
     #[serde(default)]
@@ -24,7 +24,7 @@ pub struct Material {
     pub item_use: Vec<MaterialUseParam>,
     pub use_target: Option<String>, // TODO: that's an enum!
 
-    /*
-        Misc fields omitted
-     */
+                                    /*
+                                       Misc fields omitted
+                                    */
 }

@@ -1,26 +1,29 @@
-use std::sync::{mpsc::{self, Sender, Receiver}, Arc, Mutex};
-use std::thread;
-use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::collections::{HashMap, HashSet};
+use std::sync::{
+    mpsc::{self, Receiver, Sender},
+    Arc, Mutex,
+};
+use std::thread;
 
 use rs_ipc::{IpcMessage, PushSocket};
 
 use prost::Message;
 
 use proto;
-use proto::{PacketId, CombatTypeArgument, ForwardType, ProtEntityType};
+use proto::{CombatTypeArgument, ForwardType, PacketId, ProtEntityType};
 
 use packet_processor_macro::*;
 #[macro_use]
 use packet_processor::*;
-use serde_json::de::Read;
+use crate::utils::IdManager;
 use crate::{DatabaseManager, JsonManager, LuaManager};
-use crate::utils::{IdManager};
 use rs_utils::TimeManager;
+use serde_json::de::Read;
 
+use super::entities::Entity;
 use crate::luamanager::Vector;
 use rs_nodeconf::NodeConfig;
-use super::entities::Entity;
 
 #[derive(Debug)]
 struct Player {
@@ -51,16 +54,23 @@ impl Player {
                 client_sequence_id: 0,
             });
 
-            build_and_send!(self, player_id, metadata, SceneEntityDisappearNotify {
-                entity_list: entity_list,
-                disappear_type: proto::VisionType::VisionMiss as i32,
-            })
+            build_and_send!(
+                self,
+                player_id,
+                metadata,
+                SceneEntityDisappearNotify {
+                    entity_list: entity_list,
+                    disappear_type: proto::VisionType::VisionMiss as i32,
+                }
+            )
         }
     }
 
     pub fn position_changed(&mut self) {
         // 1. Go through the list of spawned entities and despawn those that are too far from us
-        let despawn_list: Vec<u32> = self.entities.iter()
+        let despawn_list: Vec<u32> = self
+            .entities
+            .iter()
             .filter(|(k, v)| v.pos().sub(&self.pos).len() > Self::DESPAWN_DISTANCE)
             .map(|(k, v)| *k)
             .collect();
@@ -77,23 +87,34 @@ impl Player {
                 client_sequence_id: 0,
             });
 
-            build_and_send!(self, player_id, metadata, SceneEntityDisappearNotify {
-                entity_list: despawn_list,
-                disappear_type: proto::VisionType::VisionMiss as i32,
-            });
+            build_and_send!(
+                self,
+                player_id,
+                metadata,
+                SceneEntityDisappearNotify {
+                    entity_list: despawn_list,
+                    disappear_type: proto::VisionType::VisionMiss as i32,
+                }
+            );
         }
 
         // 2. Go through the list of available entities and spawn those that are close to us and their respawn timeout (in case of collectibles and monsters) is over
         let spawned_list: HashSet<u32> = self.entities.iter().map(|(k, v)| *k).collect();
 
         // TODO: do this once only on block change!
-        let scene = self.lua_manager.get_scene_by_id(self.current_scene).unwrap();
-        let block = match scene.get_block_by_id(self.current_block) { // TODO: this is due to some blocks missing
+        let scene = self
+            .lua_manager
+            .get_scene_by_id(self.current_scene)
+            .unwrap();
+        let block = match scene.get_block_by_id(self.current_block) {
+            // TODO: this is due to some blocks missing
             Ok(block) => block,
             Err(_) => return,
         };
 
-        let spawn_list: Vec<Arc<Entity>> = block.entities.iter()
+        let spawn_list: Vec<Arc<Entity>> = block
+            .entities
+            .iter()
             .filter(|(entity_id, entity)| !spawned_list.contains(entity_id)) // If entity isn't spawned already...
             .filter(|(entity_id, entity)| entity.pos().sub(&self.pos).len() < Self::SPAWN_DISTANCE) // ... and is close enough
             .map(|(entity_id, entity)| (*entity).clone())
@@ -107,12 +128,23 @@ impl Player {
                 client_sequence_id: 0,
             });
 
-            let world_level = self.db_manager.get_player_world_level(self.player_id).unwrap() as u32;
+            let world_level = self
+                .db_manager
+                .get_player_world_level(self.player_id)
+                .unwrap() as u32;
 
-            build_and_send!(self, player_id, metadata, SceneEntityAppearNotify {
-                entity_list: spawn_list.iter().map(|e| e.convert(world_level, &self.json_manager, &self.db_manager)).collect(),
-                appear_type: proto::VisionType::VisionBorn as i32,
-            });
+            build_and_send!(
+                self,
+                player_id,
+                metadata,
+                SceneEntityAppearNotify {
+                    entity_list: spawn_list
+                        .iter()
+                        .map(|e| e.convert(world_level, &self.json_manager, &self.db_manager))
+                        .collect(),
+                    appear_type: proto::VisionType::VisionBorn as i32,
+                }
+            );
 
             for entity in spawn_list.into_iter() {
                 self.entities.insert(entity.entity_id, entity.clone());
@@ -121,7 +153,10 @@ impl Player {
     }
 
     pub fn enter_scene(&mut self, enter_type: &proto::EnterType, token: u32) {
-        let world_level = self.db_manager.get_player_world_level(self.player_id).unwrap() as u32;
+        let world_level = self
+            .db_manager
+            .get_player_world_level(self.player_id)
+            .unwrap() as u32;
         let player_id = self.player_id;
 
         let mut scene_info = self.db_manager.get_player_scene_info(player_id).unwrap();
@@ -139,16 +174,21 @@ impl Player {
             client_sequence_id: 0,
         });
 
-        build_and_send! (self, player_id, metadata, PlayerEnterSceneNotify {
-            scene_id: self.current_scene,
-            r#type: *enter_type as i32,
-            scene_begin_time: TimeManager::timestamp(),
-            pos: Some((&self.pos).into()),
-            target_uid: self.player_id,
-            world_level: world_level,
-            enter_scene_token: token,
-            //enter_reason: 1,
-        });
+        build_and_send!(
+            self,
+            player_id,
+            metadata,
+            PlayerEnterSceneNotify {
+                scene_id: self.current_scene,
+                r#type: *enter_type as i32,
+                scene_begin_time: TimeManager::timestamp(),
+                pos: Some((&self.pos).into()),
+                target_uid: self.player_id,
+                world_level: world_level,
+                enter_scene_token: token,
+                //enter_reason: 1,
+            }
+        );
     }
 
     // Gatherable stuff is described in GatherExcelConfigData
@@ -164,7 +204,12 @@ pub struct EntityManager {
 }
 
 impl EntityManager {
-    pub fn new(lua_manager: Arc<LuaManager>, json_manager: Arc<JsonManager>, db_manager: Arc<DatabaseManager>, node_config: &NodeConfig) -> Self {
+    pub fn new(
+        lua_manager: Arc<LuaManager>,
+        json_manager: Arc<JsonManager>,
+        db_manager: Arc<DatabaseManager>,
+        node_config: &NodeConfig,
+    ) -> Self {
         let (tx, rx): (Sender<u32>, Receiver<u32>) = mpsc::channel();
 
         let mut es = Self {
@@ -196,19 +241,23 @@ impl EntityManager {
                         let block = scene.get_block_by_pos(&player.pos);
 
                         match block {
-                            Ok(block) =>
+                            Ok(block) => {
                                 if player.current_block != block.block_id {
-                                    println!("Player {:?} moved to the block {:?}", player.player_id, block.block_id);
+                                    println!(
+                                        "Player {:?} moved to the block {:?}",
+                                        player.player_id, block.block_id
+                                    );
                                     player.current_block = block.block_id;
-                                },
+                                }
+                            }
                             Err(_) => {
                                 // TODO?
                                 player.current_block = 0;
-                            },
+                            }
                         };
 
                         player.position_changed();
-                    },
+                    }
                     Err(_) => panic!("Failed to grab player data!"),
                 };
             }
@@ -216,8 +265,7 @@ impl EntityManager {
     }
 
     pub fn player_moved(&self, user_id: u32, pos: Vector) {
-        match self.players.lock()
-        {
+        match self.players.lock() {
             Ok(mut players) => match players.entry(user_id) {
                 Occupied(mut player) => {
                     let mut player = player.get_mut();
@@ -228,10 +276,10 @@ impl EntityManager {
                     } else {
                         println!("WARN: Teleport detected, hack applied!");
                     }
-                },
+                }
                 Vacant(entry) => {
                     panic!("Moving of nonexistent player: {}", user_id);
-                },
+                }
             },
             Err(_) => panic!("Failed to grab player data!"),
         };
@@ -239,9 +287,15 @@ impl EntityManager {
         self.players_moved.send(user_id).unwrap();
     }
 
-    pub fn player_teleported(&self, user_id: u32, pos: Vector, scene_id: u32, token: u32, reason: &proto::EnterType) {
-        match self.players.lock()
-        {
+    pub fn player_teleported(
+        &self,
+        user_id: u32,
+        pos: Vector,
+        scene_id: u32,
+        token: u32,
+        reason: &proto::EnterType,
+    ) {
+        match self.players.lock() {
             Ok(mut players) => match players.entry(user_id) {
                 Occupied(mut player) => {
                     let mut player = player.get_mut();
@@ -252,7 +306,7 @@ impl EntityManager {
                     player.current_scene = scene_id;
 
                     player.enter_scene(reason, token);
-                },
+                }
                 Vacant(entry) => {
                     let mut player = Player {
                         player_id: user_id,
@@ -263,13 +317,13 @@ impl EntityManager {
                         lua_manager: self.lua_manager.clone(),
                         json_manager: self.json_manager.clone(),
                         db_manager: self.db_manager.clone(),
-                        packets_to_send_tx: NodeConfig::new().connect_out_queue().unwrap(),//self.packets_to_send_tx.clone(),
+                        packets_to_send_tx: NodeConfig::new().connect_out_queue().unwrap(), //self.packets_to_send_tx.clone(),
                     };
 
                     player.enter_scene(reason, token);
 
                     entry.insert(player);
-                },
+                }
             },
             Err(_) => panic!("Failed to grab player data!"),
         };

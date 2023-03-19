@@ -24,11 +24,7 @@ pub struct Vector {
 
 impl Vector {
     pub fn new(x: f32, y: f32, z: f32) -> Self {
-        Vector {
-            x,
-            y,
-            z
-        }
+        Vector { x, y, z }
     }
 
     pub fn add(&self, other: &Self) -> Vector {
@@ -48,7 +44,7 @@ impl Vector {
     }
 
     pub fn lensq(&self) -> f32 {
-        self.x*self.x + self.y*self.y + self.z*self.z
+        self.x * self.x + self.y * self.y + self.z * self.z
     }
 
     pub fn len(&self) -> f32 {
@@ -58,13 +54,21 @@ impl Vector {
 
 impl From<&Vector> for proto::Vector {
     fn from(v: &Vector) -> proto::Vector {
-        proto::Vector { x: v.x, y: v.y, z: v.z }
+        proto::Vector {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+        }
     }
 }
 
 impl From<&proto::Vector> for Vector {
     fn from(v: &proto::Vector) -> Vector {
-        Vector { x: v.x, y: v.y, z: v.z }
+        Vector {
+            x: v.x,
+            y: v.y,
+            z: v.z,
+        }
     }
 }
 
@@ -76,10 +80,7 @@ pub struct BlockRect {
 
 impl BlockRect {
     pub fn contains(&self, x: f32, z: f32) -> bool {
-        self.min.x <= x &&
-            self.min.z <= z &&
-            self.max.x > x &&
-            self.max.z > z
+        self.min.x <= x && self.min.z <= z && self.max.x > x && self.max.z > z
     }
 }
 
@@ -95,13 +96,13 @@ pub struct SceneConfig {
 
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 pub struct Scene {
-    pub blocks: HashMap<u32,u32>,
+    pub blocks: HashMap<u32, u32>,
     #[serde(default)]
-    pub block_rects: HashMap<u32,BlockRect>,
+    pub block_rects: HashMap<u32, BlockRect>,
     #[serde(default)]
-    pub routes_config: HashMap<u32,String>,
+    pub routes_config: HashMap<u32, String>,
     #[serde(default)]
-    pub dummy_points: HashMap<u32,String>,
+    pub dummy_points: HashMap<u32, String>,
     pub scene_config: SceneConfig,
 }
 
@@ -109,7 +110,7 @@ pub struct Scene {
 
 #[derive(Deserialize, PartialEq, Debug, Clone)]
 pub struct Block {
-    pub groups: HashMap<u32,GroupInfo>,
+    pub groups: HashMap<u32, GroupInfo>,
 }
 
 #[derive(Deserialize, PartialEq, Debug, Clone)]
@@ -141,21 +142,20 @@ pub struct Business {
 pub struct Group {
     pub init_config: Option<GroupInitConfig>,
     #[serde(default)]
-    pub suites: HashMap<u32,Suite>,
+    pub suites: HashMap<u32, Suite>,
 
     #[serde(default)]
-    pub npcs: HashMap<u32,Npc>,
+    pub npcs: HashMap<u32, Npc>,
     #[serde(default)]
-    pub variables: HashMap<u32,Variable>,
+    pub variables: HashMap<u32, Variable>,
     #[serde(default)]
-    pub triggers: HashMap<u32,u32>,
+    pub triggers: HashMap<u32, u32>,
     #[serde(default)]
-    pub regions: HashMap<u32,u32>,
+    pub regions: HashMap<u32, u32>,
     #[serde(default)]
-    pub gadgets: HashMap<u32,Gadget>,
+    pub gadgets: HashMap<u32, Gadget>,
     #[serde(default)]
-    pub monsters: HashMap<u32,Monster>,
-
+    pub monsters: HashMap<u32, Monster>,
     // MovePlatform - Function???
 }
 
@@ -164,16 +164,16 @@ pub struct Suite {
     pub rand_weight: u32,
 
     #[serde(default)]
-    pub npcs: HashMap<u32,u32>,
+    pub npcs: HashMap<u32, u32>,
     // Variables?
     #[serde(default)]
-    pub triggers: HashMap<u32,u32>,
+    pub triggers: HashMap<u32, u32>,
     #[serde(default)]
-    pub regions: HashMap<u32,u32>,
+    pub regions: HashMap<u32, u32>,
     #[serde(default)]
-    pub gadgets: HashMap<u32,u32>,
+    pub gadgets: HashMap<u32, u32>,
     #[serde(default)]
-    pub monsters: HashMap<u32,u32>,
+    pub monsters: HashMap<u32, u32>,
 }
 
 #[derive(Deserialize, PartialEq, Debug, Clone)]
@@ -200,8 +200,8 @@ pub struct Monster {
     pub monster_id: u32,
 
     /*
-      This is an artificial field that is not serialized nor deserialized
-     */
+     This is an artificial field that is not serialized nor deserialized
+    */
     #[serde(skip)]
     pub weapons_list: Vec<MonsterWeaponInfo>,
 }

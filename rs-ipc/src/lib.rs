@@ -1,4 +1,4 @@
 mod ipc;
 
 pub use ipc::IpcMessage;
-pub use ipc::{SubSocket, PubSocket, PushSocket, PullSocket, Result};
+pub use ipc::{PubSocket, PullSocket, PushSocket, Result, SubSocket};

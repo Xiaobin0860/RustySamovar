@@ -1,11 +1,11 @@
+use std::convert::TryInto;
+use std::fs;
 use std::io;
 use std::io::Read;
-use std::fs;
+use std::io::Write;
 use std::net::SocketAddr;
 use std::net::UdpSocket;
-use std::io::Write;
 use std::time::SystemTime;
-use std::convert::TryInto;
 
 use rs_utils::TimeManager;
 
@@ -23,15 +23,16 @@ pub struct ClientConnection {
     pending_seed: Option<u64>,
 }
 
-pub struct Source
-{
+pub struct Source {
     address: Option<SocketAddr>,
     socket: UdpSocket,
 }
 
 impl Write for Source {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
-        return self.socket.send_to(data, self.address.expect("Unknown destination address!"));
+        return self
+            .socket
+            .send_to(data, self.address.expect("Unknown destination address!"));
     }
 
     fn flush(&mut self) -> io::Result<()> {
@@ -51,7 +52,9 @@ impl ClientConnection {
             token: token,
             ikcp: Kcp::new(conv, token, s),
             established_time: SystemTime::now(),
-            key: ClientConnection::read_key("master").try_into().expect("Incorrect master key"),
+            key: ClientConnection::read_key("master")
+                .try_into()
+                .expect("Incorrect master key"),
             pending_seed: None,
         };
     }
@@ -62,11 +65,11 @@ impl ClientConnection {
 
     pub fn process_udp_packet(&mut self, data: &[u8]) -> Vec<Vec<u8>> {
         match self.pending_seed {
-            None => {},
+            None => {}
             Some(seed) => {
                 mhycrypt::mhy_generate_key(&mut self.key, seed, false);
                 self.pending_seed = None;
-            },
+            }
         }
 
         let mut packets: Vec<Vec<u8>> = Vec::new();
@@ -81,13 +84,19 @@ impl ClientConnection {
                     #[cfg(feature = "raw_packet_dump")]
                     {
                         use pretty_hex::*;
-                        let cfg = HexConfig {title: true, width: 16, group: 0, ascii: true, ..HexConfig::default() };
+                        let cfg = HexConfig {
+                            title: true,
+                            width: 16,
+                            group: 0,
+                            ascii: true,
+                            ..HexConfig::default()
+                        };
                         println!("{:?}", buf[..size].to_vec().hex_conf(cfg));
                     }
                     mhycrypt::mhy_xor(&mut buf[..size], &self.key);
                     let data = buf[..size].to_owned();
                     packets.push(data);
-                },
+                }
             }
         }
         self.ikcp.update(self.elapsed_time_millis()).unwrap();
@@ -108,7 +117,9 @@ impl ClientConnection {
     }
 
     fn elapsed_time_millis(&self) -> u32 {
-        return TimeManager::duration_since(self.established_time).try_into().unwrap();
+        return TimeManager::duration_since(self.established_time)
+            .try_into()
+            .unwrap();
     }
 
     pub fn send_udp_packet(&mut self, data: &[u8]) {

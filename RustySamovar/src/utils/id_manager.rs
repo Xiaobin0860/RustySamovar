@@ -1,5 +1,4 @@
-pub struct IdManager {
-}
+pub struct IdManager {}
 
 impl IdManager {
     const AVATAR_ID_OFFSET: u32 = 10_000_000;
@@ -11,7 +10,7 @@ impl IdManager {
     const PROUD_SKILL_OFFSET: u32 = 1;
 
     const ENTITY_ID_OFFSET: u32 = 24;
-    const ENTITY_ID_MASK: u32 = ((1<<Self::ENTITY_ID_OFFSET)-1); //0xFFFFFF;
+    const ENTITY_ID_MASK: u32 = ((1 << Self::ENTITY_ID_OFFSET) - 1); //0xFFFFFF;
 
     pub fn get_avatar_id_by_char_id(character_id: u32) -> u32 {
         if (character_id > 100) {

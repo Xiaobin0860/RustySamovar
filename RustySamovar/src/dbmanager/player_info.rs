@@ -1,7 +1,7 @@
 // Database Manager
 
-use sea_orm::entity::prelude::*;
 use chrono::NaiveDate;
+use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel)]
 #[sea_orm(table_name = "player_info")]
@@ -19,8 +19,7 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter)]
-pub enum Relation {
-}
+pub enum Relation {}
 
 impl RelationTrait for Relation {
     fn def(&self) -> RelationDef {

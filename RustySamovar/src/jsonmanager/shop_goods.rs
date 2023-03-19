@@ -1,11 +1,11 @@
 use chrono::NaiveDateTime;
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 use rs_utils::TimeManager;
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct CostItem {
     #[serde(default)]
     pub item_id: u32,
@@ -14,7 +14,7 @@ pub struct CostItem {
 }
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct ShopGoods {
     pub goods_id: u32,
     pub shop_type: u32,
@@ -39,5 +39,5 @@ pub struct ShopGoods {
     pub cost_scoin: Option<u32>,
 
     pub precondition_param_list: Vec<String>, // TODO: that's probably an enum!
-    pub precondition: Option<String>, // TODO: that's an enum for sure
+    pub precondition: Option<String>,         // TODO: that's an enum for sure
 }

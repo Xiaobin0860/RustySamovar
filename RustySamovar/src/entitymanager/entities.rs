@@ -5,12 +5,12 @@ use rand::{self, Rng};
 
 #[macro_use]
 use packet_processor::*;
-use crate::{DatabaseManager, EntityManager, JsonManager};
 use crate::jsonmanager::{CurveInfo, EntityCurve};
+use crate::{DatabaseManager, EntityManager, JsonManager};
 
 use crate::collection;
 
-use crate::luamanager::{Monster, Npc, Gadget, Vector};
+use crate::luamanager::{Gadget, Monster, Npc, Vector};
 use crate::utils::Remapper;
 
 pub trait EntityTrait {
@@ -19,20 +19,46 @@ pub trait EntityTrait {
     fn rot(&self) -> Vector;
     fn speed(&self) -> Vector;
     fn etype(&self) -> proto::ProtEntityType;
-    fn info(&self, block_id: u32, group_id: u32, jm: &Arc<JsonManager>) -> proto::scene_entity_info::Entity;
-    fn props(&self, world_level: u32, jm: &Arc<JsonManager>, db: &Arc<DatabaseManager>) -> HashMap<u32, i64>;
-    fn fight_props(&self, world_level: u32, jm: &Arc<JsonManager>, db: &Arc<DatabaseManager>) -> HashMap<proto::FightPropType, f32>;
+    fn info(
+        &self,
+        block_id: u32,
+        group_id: u32,
+        jm: &Arc<JsonManager>,
+    ) -> proto::scene_entity_info::Entity;
+    fn props(
+        &self,
+        world_level: u32,
+        jm: &Arc<JsonManager>,
+        db: &Arc<DatabaseManager>,
+    ) -> HashMap<u32, i64>;
+    fn fight_props(
+        &self,
+        world_level: u32,
+        jm: &Arc<JsonManager>,
+        db: &Arc<DatabaseManager>,
+    ) -> HashMap<proto::FightPropType, f32>;
     fn get_scaled_level(&self, world_level: u32, jm: &Arc<JsonManager>) -> u32;
 
-    fn curve_info_for_level<'a>(&self, list: &'a HashMap<u32, EntityCurve>, level: u32) -> HashMap<u32, &'a CurveInfo> {
-        list[&level].curve_infos.iter()
+    fn curve_info_for_level<'a>(
+        &self,
+        list: &'a HashMap<u32, EntityCurve>,
+        level: u32,
+    ) -> HashMap<u32, &'a CurveInfo> {
+        list[&level]
+            .curve_infos
+            .iter()
             .map(|c| (c.r#type.clone() as u32, c))
             .collect()
     }
 
-    fn get_scaled_props(&self, world_level: u32, jm: &Arc<JsonManager>, list: &HashMap<u32, EntityCurve>,
-                        scaling_helper: &HashMap<proto::FightPropType, (proto::FightPropType, f32)>,
-                        grow_curves: &HashMap<proto::FightPropType, proto::GrowCurveType>) -> HashMap<proto::FightPropType,f32> {
+    fn get_scaled_props(
+        &self,
+        world_level: u32,
+        jm: &Arc<JsonManager>,
+        list: &HashMap<u32, EntityCurve>,
+        scaling_helper: &HashMap<proto::FightPropType, (proto::FightPropType, f32)>,
+        grow_curves: &HashMap<proto::FightPropType, proto::GrowCurveType>,
+    ) -> HashMap<proto::FightPropType, f32> {
         let level = self.get_scaled_level(world_level, jm);
 
         let curve_info = EntityTrait::curve_info_for_level(self, list, level);
@@ -45,7 +71,7 @@ pub trait EntityTrait {
                 None => {
                     println!("No curve {:?} for entity {}!", v.0, self.id());
                     continue;
-                },
+                }
             };
 
             let curve = match curve_info.get(&gct) {
@@ -54,15 +80,18 @@ pub trait EntityTrait {
             };
 
             let scaled_value = match curve.arith {
-                proto::ArithType::ArithMulti => {
-                    curve.value.unwrap() * v.1
-                },
+                proto::ArithType::ArithMulti => curve.value.unwrap() * v.1,
                 proto::ArithType::ArithAdd => {
                     println!("Don't know how to use ArithAdd!");
                     v.1
                 }
                 _ => {
-                    panic!("Unknown arith type {:?} for curve {:?} (level {})", curve.arith, curve.r#type.clone() as u32, level);
+                    panic!(
+                        "Unknown arith type {:?} for curve {:?} (level {})",
+                        curve.arith,
+                        curve.r#type.clone() as u32,
+                        level
+                    );
                 }
             };
 
@@ -74,15 +103,21 @@ pub trait EntityTrait {
     }
 }
 
-impl std::fmt::Debug for EntityTrait+Sync+Send { // TODO: fucking hack!
+impl std::fmt::Debug for EntityTrait + Sync + Send {
+    // TODO: fucking hack!
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{{ \npos: {:?},\n rot: {:?},\n speed: {:?}, \netype: {:?},\n}}",
-        self.pos(), self.rot(), self.speed(), self.etype()
+        write!(
+            f,
+            "{{ \npos: {:?},\n rot: {:?},\n speed: {:?}, \netype: {:?},\n}}",
+            self.pos(),
+            self.rot(),
+            self.speed(),
+            self.etype()
         )
     }
 }
 
-#[derive(Debug,Clone)]
+#[derive(Debug, Clone)]
 pub struct Entity {
     pub entity_id: u32,
     pub group_id: u32,
@@ -101,32 +136,48 @@ impl EntityTrait for Monster {
     fn rot(&self) -> Vector {
         self.rot.clone()
     }
-    fn speed(&self) -> Vector { // TODO!
-        Vector {x:0.0, y:0.0, z:0.0}
+    fn speed(&self) -> Vector {
+        // TODO!
+        Vector {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
     fn etype(&self) -> proto::ProtEntityType {
         proto::ProtEntityType::ProtEntityMonster
     }
-    fn info(&self, block_id: u32, group_id: u32, jm: &Arc<JsonManager>) -> proto::scene_entity_info::Entity {
+    fn info(
+        &self,
+        block_id: u32,
+        group_id: u32,
+        jm: &Arc<JsonManager>,
+    ) -> proto::scene_entity_info::Entity {
         let monster_info = &jm.monsters.get(&self.monster_id);
 
         let affixes = match monster_info {
             Some(mi) => mi.affix.clone(),
             None => {
-                println!("No monster info found for monster {}! No affix.", self.monster_id);
+                println!(
+                    "No monster info found for monster {}! No affix.",
+                    self.monster_id
+                );
                 vec![]
-            },
+            }
         };
 
-        let weapon_list: Vec<_> = self.weapons_list.iter()
+        let weapon_list: Vec<_> = self
+            .weapons_list
+            .iter()
             .map(|mwi| {
                 build!(SceneWeaponInfo {
                     entity_id: mwi.entity_id,
                     gadget_id: mwi.gadget_id,
-                    ability_info: Some(build!(AbilitySyncStateInfo { is_inited: true, })),
+                    ability_info: Some(build!(AbilitySyncStateInfo { is_inited: true })),
                     // TODO: there're many more fields!
                 })
-            }).collect();
+            })
+            .collect();
 
         proto::scene_entity_info::Entity::Monster(build!(SceneMonsterInfo {
             monster_id: self.monster_id,
@@ -140,14 +191,24 @@ impl EntityTrait for Monster {
             // TODO: special_name_id, title_id, pose_id!
         }))
     }
-    fn props(&self, world_level: u32, jm: &Arc<JsonManager>, db: &Arc<DatabaseManager>) -> HashMap<u32, i64> {
+    fn props(
+        &self,
+        world_level: u32,
+        jm: &Arc<JsonManager>,
+        db: &Arc<DatabaseManager>,
+    ) -> HashMap<u32, i64> {
         let level = self.get_scaled_level(world_level, jm) as i64;
 
-        collection!{
+        collection! {
             proto::PropType::PropLevel as u32 => level,
         }
     }
-    fn fight_props(&self, world_level: u32, jm: &Arc<JsonManager>, db: &Arc<DatabaseManager>) -> HashMap<proto::FightPropType,f32> {
+    fn fight_props(
+        &self,
+        world_level: u32,
+        jm: &Arc<JsonManager>,
+        db: &Arc<DatabaseManager>,
+    ) -> HashMap<proto::FightPropType, f32> {
         let mut props = HashMap::new();
 
         let monster_info = &jm.monsters.get(&self.monster_id);
@@ -156,7 +217,7 @@ impl EntityTrait for Monster {
             Some(mi) => {
                 // Non-scaled props
 
-                let non_scaled_props: HashMap<proto::FightPropType,f32> = collection!{
+                let non_scaled_props: HashMap<proto::FightPropType, f32> = collection! {
                     proto::FightPropType::FightPropPhysicalSubHurt => mi.physical_sub_hurt,
                     proto::FightPropType::FightPropFireSubHurt => mi.fire_sub_hurt,
                     proto::FightPropType::FightPropElecSubHurt => mi.elec_sub_hurt,
@@ -172,12 +233,14 @@ impl EntityTrait for Monster {
                 // Scaled props
 
                 // Transform monster's dict into usable format
-                let grow_curves: HashMap<proto::FightPropType, proto::GrowCurveType> = mi.prop_grow_curves.iter()
+                let grow_curves: HashMap<proto::FightPropType, proto::GrowCurveType> = mi
+                    .prop_grow_curves
+                    .iter()
                     //.filter_map(|g| g.data.as_ref())
                     .map(|g| (g.r#type, g.grow_curve.clone()))
                     .collect();
 
-                let scaling_helper: HashMap<proto::FightPropType, (proto::FightPropType, f32)> = collection!{
+                let scaling_helper: HashMap<proto::FightPropType, (proto::FightPropType, f32)> = collection! {
                     proto::FightPropType::FightPropCurAttack => (
                         proto::FightPropType::FightPropBaseAttack,
                         mi.attack_base,
@@ -192,23 +255,30 @@ impl EntityTrait for Monster {
                     ),
                 };
 
-                props.extend(
-                    self.get_scaled_props(world_level, jm, &jm.monster_curves, &scaling_helper, &grow_curves)
-                );
+                props.extend(self.get_scaled_props(
+                    world_level,
+                    jm,
+                    &jm.monster_curves,
+                    &scaling_helper,
+                    &grow_curves,
+                ));
 
                 // TODO: hack! Properly calculate HP!
                 match props.get(&proto::FightPropType::FightPropMaxHp) {
                     Some(value) => {
                         props.insert(proto::FightPropType::FightPropCurHp, value * 0.7);
-                    },
+                    }
                     None => {
                         println!("Monster {} has no HP!", self.monster_id);
                     }
                 }
-            },
-            None=> {
-                println!("No monster info found for monster {}! No fight props.", self.monster_id);
-            },
+            }
+            None => {
+                println!(
+                    "No monster info found for monster {}! No fight props.",
+                    self.monster_id
+                );
+            }
         };
 
         return props;
@@ -235,22 +305,42 @@ impl EntityTrait for Npc {
     fn rot(&self) -> Vector {
         self.rot.clone()
     }
-    fn speed(&self) -> Vector { // TODO!
-        Vector {x:0.0, y:0.0, z:0.0}
+    fn speed(&self) -> Vector {
+        // TODO!
+        Vector {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
     fn etype(&self) -> proto::ProtEntityType {
         proto::ProtEntityType::ProtEntityNpc
     }
-    fn info(&self, block_id: u32, group_id: u32, jm: &Arc<JsonManager>) -> proto::scene_entity_info::Entity {
+    fn info(
+        &self,
+        block_id: u32,
+        group_id: u32,
+        jm: &Arc<JsonManager>,
+    ) -> proto::scene_entity_info::Entity {
         proto::scene_entity_info::Entity::Npc(build!(SceneNpcInfo {
             npc_id: self.npc_id,
             block_id: block_id,
         }))
     }
-    fn props(&self, world_level: u32, jm: &Arc<JsonManager>, db: &Arc<DatabaseManager>) -> HashMap<u32, i64> {
+    fn props(
+        &self,
+        world_level: u32,
+        jm: &Arc<JsonManager>,
+        db: &Arc<DatabaseManager>,
+    ) -> HashMap<u32, i64> {
         HashMap::new() // TODO
     }
-    fn fight_props(&self, world_level: u32, jm: &Arc<JsonManager>, db: &Arc<DatabaseManager>) -> HashMap<proto::FightPropType,f32> {
+    fn fight_props(
+        &self,
+        world_level: u32,
+        jm: &Arc<JsonManager>,
+        db: &Arc<DatabaseManager>,
+    ) -> HashMap<proto::FightPropType, f32> {
         HashMap::new() // TODO
     }
     fn get_scaled_level(&self, world_level: u32, jm: &Arc<JsonManager>) -> u32 {
@@ -275,13 +365,23 @@ impl EntityTrait for Gadget {
     fn rot(&self) -> Vector {
         self.rot.clone()
     }
-    fn speed(&self) -> Vector { // TODO!
-        Vector {x:0.0, y:0.0, z:0.0}
+    fn speed(&self) -> Vector {
+        // TODO!
+        Vector {
+            x: 0.0,
+            y: 0.0,
+            z: 0.0,
+        }
     }
     fn etype(&self) -> proto::ProtEntityType {
         proto::ProtEntityType::ProtEntityGadget
     }
-    fn info(&self, block_id: u32, group_id: u32, jm: &Arc<JsonManager>) -> proto::scene_entity_info::Entity {
+    fn info(
+        &self,
+        block_id: u32,
+        group_id: u32,
+        jm: &Arc<JsonManager>,
+    ) -> proto::scene_entity_info::Entity {
         proto::scene_entity_info::Entity::Gadget(build!(SceneGadgetInfo {
             gadget_id: self.gadget_id,
             group_id: group_id,
@@ -291,10 +391,20 @@ impl EntityTrait for Gadget {
             content: self.get_content(jm),
         }))
     }
-    fn props(&self, world_level: u32, jm: &Arc<JsonManager>, db: &Arc<DatabaseManager>) -> HashMap<u32, i64> {
+    fn props(
+        &self,
+        world_level: u32,
+        jm: &Arc<JsonManager>,
+        db: &Arc<DatabaseManager>,
+    ) -> HashMap<u32, i64> {
         HashMap::new() // TODO
     }
-    fn fight_props(&self, world_level: u32, jm: &Arc<JsonManager>, db: &Arc<DatabaseManager>) -> HashMap<proto::FightPropType,f32> {
+    fn fight_props(
+        &self,
+        world_level: u32,
+        jm: &Arc<JsonManager>,
+        db: &Arc<DatabaseManager>,
+    ) -> HashMap<proto::FightPropType, f32> {
         let mut props = HashMap::new();
 
         let gadget_props = jm.gadget_props.get(&self.gadget_id);
@@ -304,13 +414,13 @@ impl EntityTrait for Gadget {
                 // Scaled props
 
                 // Transform monster's dict into usable format
-                let grow_curves: HashMap<proto::FightPropType, proto::GrowCurveType> = collection!{
+                let grow_curves: HashMap<proto::FightPropType, proto::GrowCurveType> = collection! {
                     proto::FightPropType::FightPropBaseHp => gp.hp_curve.clone(),
                     proto::FightPropType::FightPropBaseAttack => gp.attack_curve.clone(),
                     proto::FightPropType::FightPropBaseDefense => gp.defense_curve.clone(),
                 };
 
-                let scaling_helper: HashMap<proto::FightPropType, (proto::FightPropType, f32)> = collection!{
+                let scaling_helper: HashMap<proto::FightPropType, (proto::FightPropType, f32)> = collection! {
                     proto::FightPropType::FightPropCurAttack => (
                         proto::FightPropType::FightPropBaseAttack,
                         gp.attack,
@@ -325,23 +435,30 @@ impl EntityTrait for Gadget {
                     ),
                 };
 
-                props.extend(
-                    self.get_scaled_props(world_level, jm, &jm.gadget_curves, &scaling_helper, &grow_curves)
-                );
+                props.extend(self.get_scaled_props(
+                    world_level,
+                    jm,
+                    &jm.gadget_curves,
+                    &scaling_helper,
+                    &grow_curves,
+                ));
 
                 // TODO: hack! Properly calculate HP!
                 match props.get(&proto::FightPropType::FightPropMaxHp) {
                     Some(value) => {
                         props.insert(proto::FightPropType::FightPropCurHp, value * 0.7);
-                    },
+                    }
                     None => {
                         println!("Gadget {} has no HP!", self.gadget_id);
                     }
                 }
-            },
-            None=> {
-                println!("No gadget info found for gadget {}! No fight props.", self.gadget_id);
-            },
+            }
+            None => {
+                println!(
+                    "No gadget info found for gadget {}! No fight props.",
+                    self.gadget_id
+                );
+            }
         };
 
         return props;
@@ -367,7 +484,12 @@ impl Entity {
         self.entity.etype()
     }
 
-    pub fn convert(&self, world_level: u32, jm: &Arc<JsonManager>, db: &Arc<DatabaseManager>) -> proto::SceneEntityInfo {
+    pub fn convert(
+        &self,
+        world_level: u32,
+        jm: &Arc<JsonManager>,
+        db: &Arc<DatabaseManager>,
+    ) -> proto::SceneEntityInfo {
         let mut sei = build!(SceneEntityInfo {
             entity_id: self.entity_id,
             entity_type: self.entity.etype() as i32,
@@ -381,7 +503,7 @@ impl Entity {
             animator_para_list: vec![],
             entity_client_data: Some(build!(EntityClientData {})),
             entity_authority_info: Some(build!(EntityAuthorityInfo {
-                renderer_changed_info: Some(build!(EntityRendererChangedInfo{})),
+                renderer_changed_info: Some(build!(EntityRendererChangedInfo {})),
                 ai_info: Some(build!(SceneEntityAiInfo {
                     is_ai_open: true, // TODO!
                     born_pos: Some((&self.entity.pos()).into()),
@@ -398,17 +520,23 @@ impl Entity {
 
 impl Gadget {
     fn get_content(&self, jm: &Arc<JsonManager>) -> Option<proto::scene_gadget_info::Content> {
-        match jm.gathers.get(&self.gadget_id) { // TODO: worktop and other options are missing!
+        match jm.gathers.get(&self.gadget_id) {
+            // TODO: worktop and other options are missing!
             Some(gather) => {
-                println!("GATHERABLE {} FOUND FOR GADGET {}!", gather.item_id, self.gadget_id);
-                Some(proto::scene_gadget_info::Content::GatherGadget(build!(GatherGadgetInfo {
-                    item_id: gather.item_id,
-                })))
-            },
-            None =>  {
+                println!(
+                    "GATHERABLE {} FOUND FOR GADGET {}!",
+                    gather.item_id, self.gadget_id
+                );
+                Some(proto::scene_gadget_info::Content::GatherGadget(build!(
+                    GatherGadgetInfo {
+                        item_id: gather.item_id,
+                    }
+                )))
+            }
+            None => {
                 println!("NO CONTENT FOUND FOR GADGET {}!", self.gadget_id);
                 None
-            },
+            }
         }
     }
 }

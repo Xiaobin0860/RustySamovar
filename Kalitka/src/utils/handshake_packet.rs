@@ -1,5 +1,5 @@
-use std::fmt;
 use std::convert::TryInto;
+use std::fmt;
 
 #[derive(Debug)]
 pub struct HandshakeDecError {
@@ -8,8 +8,7 @@ pub struct HandshakeDecError {
 
 #[derive(Debug)]
 #[repr(C)]
-pub struct HandshakePacket
-{
+pub struct HandshakePacket {
     start_magic: u32,
     param1: u32,
     param2: u32,
@@ -29,7 +28,9 @@ impl HandshakePacket {
 
     pub fn new(raw_data: &[u8]) -> Result<HandshakePacket, HandshakeDecError> {
         if raw_data.len() != std::mem::size_of::<HandshakePacket>() {
-            return Err(HandshakeDecError {reason: "Size mismatch!".to_string()});
+            return Err(HandshakeDecError {
+                reason: "Size mismatch!".to_string(),
+            });
         }
 
         // unwrap() here are valid as we're cutting exactly 4 bytes of data
@@ -39,10 +40,13 @@ impl HandshakePacket {
         let data = u32::from_be_bytes(raw_data[12..16].try_into().unwrap());
         let end_magic = u32::from_be_bytes(raw_data[16..20].try_into().unwrap());
 
-        if (start_magic == HandshakePacket::HS_MAGIC_CONNECT_START) && (end_magic == HandshakePacket::HS_MAGIC_CONNECT_END) ||
-           (start_magic == HandshakePacket::HS_MAGIC_SEND_CONV_START) && (end_magic == HandshakePacket::HS_MAGIC_SEND_CONV_END) ||
-           (start_magic == HandshakePacket::HS_MAGIC_DISCONNECT_START) && (end_magic == HandshakePacket::HS_MAGIC_DISCONNECT_END) {
-
+        if (start_magic == HandshakePacket::HS_MAGIC_CONNECT_START)
+            && (end_magic == HandshakePacket::HS_MAGIC_CONNECT_END)
+            || (start_magic == HandshakePacket::HS_MAGIC_SEND_CONV_START)
+                && (end_magic == HandshakePacket::HS_MAGIC_SEND_CONV_END)
+            || (start_magic == HandshakePacket::HS_MAGIC_DISCONNECT_START)
+                && (end_magic == HandshakePacket::HS_MAGIC_DISCONNECT_END)
+        {
             return Ok(HandshakePacket {
                 start_magic: start_magic,
                 param1: param1,
@@ -51,14 +55,16 @@ impl HandshakePacket {
                 end_magic: end_magic,
             });
         } else {
-            return Err(HandshakeDecError {reason: format!("Unknown magic: 0x{:x} 0x{:x}", start_magic, end_magic),});
+            return Err(HandshakeDecError {
+                reason: format!("Unknown magic: 0x{:x} 0x{:x}", start_magic, end_magic),
+            });
         }
     }
 
     pub fn is_connect(&self) -> bool {
-        return (self.start_magic == HandshakePacket::HS_MAGIC_CONNECT_START) && 
-               (self.end_magic == HandshakePacket::HS_MAGIC_CONNECT_END) && 
-               (self.data == HandshakePacket::HS_CONNECTION_DATA);
+        return (self.start_magic == HandshakePacket::HS_MAGIC_CONNECT_START)
+            && (self.end_magic == HandshakePacket::HS_MAGIC_CONNECT_END)
+            && (self.data == HandshakePacket::HS_CONNECTION_DATA);
     }
 
     pub fn new_conv(conv: u32, token: u32) -> HandshakePacket {

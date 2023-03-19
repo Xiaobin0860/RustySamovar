@@ -1,7 +1,7 @@
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct WeaponProp {
     pub r#type: proto::GrowCurveType,
     // These two fields is missing sometimes
@@ -12,7 +12,7 @@ pub struct WeaponProp {
 }
 
 #[derive(Deserialize, Clone)]
-#[serde(rename_all="PascalCase")]
+#[serde(rename_all = "PascalCase")]
 pub struct Weapon {
     pub id: u32,
 

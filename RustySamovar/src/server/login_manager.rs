@@ -1,5 +1,5 @@
-use std::sync::{mpsc, Arc};
 use std::collections::HashMap;
+use std::sync::{mpsc, Arc};
 
 use prost::Message;
 
@@ -9,8 +9,8 @@ use packet_processor_macro::*;
 #[macro_use]
 use packet_processor::*;
 
-use crate::{DatabaseManager, luamanager};
 use crate::JsonManager;
+use crate::{luamanager, DatabaseManager};
 
 use crate::utils::{AvatarBuilder, IdManager, Remapper};
 use rs_utils::TimeManager;
@@ -28,7 +28,12 @@ pub struct LoginManager {
 }
 
 impl LoginManager {
-    pub fn new(db: Arc<DatabaseManager>, jm: Arc<JsonManager>, em: Arc<EntityManager>, node_config: &NodeConfig) -> LoginManager {
+    pub fn new(
+        db: Arc<DatabaseManager>,
+        jm: Arc<JsonManager>,
+        em: Arc<EntityManager>,
+        node_config: &NodeConfig,
+    ) -> LoginManager {
         let mut lm = LoginManager {
             packet_callbacks: HashMap::new(),
             packets_to_send_tx: node_config.connect_out_queue().unwrap(),
@@ -42,7 +47,13 @@ impl LoginManager {
         return lm;
     }
 
-    fn process_player_login(&mut self, user_id: u32, metadata: &proto::PacketHead, req: &proto::PlayerLoginReq, rsp: &mut proto::PlayerLoginRsp) {
+    fn process_player_login(
+        &mut self,
+        user_id: u32,
+        metadata: &proto::PacketHead,
+        req: &proto::PlayerLoginReq,
+        rsp: &mut proto::PlayerLoginRsp,
+    ) {
         let user = match self.db.get_player_info(user_id) {
             Some(user) => user,
             None => panic!("User {} not found!", user_id),
@@ -85,42 +96,81 @@ impl LoginManager {
 
         let world_level = player_props[&(proto::PropType::PropPlayerWorldLevel as u32)].val as u32;
 
-        build_and_send! ( self, user_id, metadata, PlayerDataNotify {
-            nick_name: user.nick_name, server_time: TimeManager::timestamp(), prop_map: player_props,
-        });
+        build_and_send!(
+            self,
+            user_id,
+            metadata,
+            PlayerDataNotify {
+                nick_name: user.nick_name,
+                server_time: TimeManager::timestamp(),
+                prop_map: player_props,
+            }
+        );
 
-        build_and_send! ( self, user_id, metadata, OpenStateUpdateNotify {
-            open_state_map: open_state,
-        });
+        build_and_send!(
+            self,
+            user_id,
+            metadata,
+            OpenStateUpdateNotify {
+                open_state_map: open_state,
+            }
+        );
 
         // TODO: hardcoded limits!
-        build_and_send! (self, user_id, metadata, StoreWeightLimitNotify {
-            store_type: proto::StoreType::StorePack as i32,
-            weight_limit: 30000,
-            material_count_limit: 2000,
-            weapon_count_limit: 2000,
-            reliquary_count_limit: 1000,
-            furniture_count_limit: 2000,
-        });
+        build_and_send!(
+            self,
+            user_id,
+            metadata,
+            StoreWeightLimitNotify {
+                store_type: proto::StoreType::StorePack as i32,
+                weight_limit: 30000,
+                material_count_limit: 2000,
+                weapon_count_limit: 2000,
+                reliquary_count_limit: 1000,
+                furniture_count_limit: 2000,
+            }
+        );
 
         // TODO: hardcoded limit!
-        build_and_send! (self, user_id, metadata, PlayerStoreNotify {
-            store_type: proto::StoreType::StorePack as i32, weight_limit: 30000, item_list: inventory,
-        });
+        build_and_send!(
+            self,
+            user_id,
+            metadata,
+            PlayerStoreNotify {
+                store_type: proto::StoreType::StorePack as i32,
+                weight_limit: 30000,
+                item_list: inventory,
+            }
+        );
 
-        build_and_send! (self, user_id, metadata, AvatarDataNotify {
-            avatar_list: avatar_list,
-            avatar_team_map: team_map,
-            cur_avatar_team_id: current_team.into(),
-            choose_avatar_guid: current_avatar as u64, // FIXME
-            owned_flycloak_list: vec![140001], // TODO!
-        });
+        build_and_send!(
+            self,
+            user_id,
+            metadata,
+            AvatarDataNotify {
+                avatar_list: avatar_list,
+                avatar_team_map: team_map,
+                cur_avatar_team_id: current_team.into(),
+                choose_avatar_guid: current_avatar as u64, // FIXME
+                owned_flycloak_list: vec![140001],         // TODO!
+            }
+        );
 
-        build_and_send!(self, user_id, metadata, CoopDataNotify { });
+        build_and_send!(self, user_id, metadata, CoopDataNotify {});
 
-        let pos = luamanager::Vector {x: scene_info.pos_x, y: scene_info.pos_y, z: scene_info.pos_z};
+        let pos = luamanager::Vector {
+            x: scene_info.pos_x,
+            y: scene_info.pos_y,
+            z: scene_info.pos_z,
+        };
 
-        self.em.player_teleported(user_id, pos, scene_info.scene_id, scene_info.scene_token, &proto::EnterType::EnterSelf);
+        self.em.player_teleported(
+            user_id,
+            pos,
+            scene_info.scene_id,
+            scene_info.scene_token,
+            &proto::EnterType::EnterSelf,
+        );
     }
 
     fn retrieve_team_info(&self, user_id: u32) -> HashMap<u32, proto::AvatarTeam> {
@@ -137,13 +187,18 @@ impl LoginManager {
         let mut team_map = HashMap::<u32, proto::AvatarTeam>::new();
 
         for team in player_teams {
-            let at = build! ( AvatarTeam {
+            let at = build!(AvatarTeam {
                 team_name: team.name.clone(),
-                avatar_guid_list: player_teams_avatars.clone().into_iter().filter(|a| a.team_id == team.id).map(|a| a.guid as u64).collect(), // FIXME
+                avatar_guid_list: player_teams_avatars
+                    .clone()
+                    .into_iter()
+                    .filter(|a| a.team_id == team.id)
+                    .map(|a| a.guid as u64)
+                    .collect(), // FIXME
             });
 
             team_map.insert(team.id.into(), at);
-        };
+        }
 
         return team_map;
     }

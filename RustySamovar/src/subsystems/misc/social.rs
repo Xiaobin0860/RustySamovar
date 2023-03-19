@@ -1,7 +1,10 @@
-use std::sync::{mpsc::{self, Sender, Receiver}, Arc, Mutex};
-use std::thread;
-use std::collections::{HashMap, HashSet};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::collections::{HashMap, HashSet};
+use std::sync::{
+    mpsc::{self, Receiver, Sender},
+    Arc, Mutex,
+};
+use std::thread;
 
 use rs_ipc::{IpcMessage, PushSocket};
 
@@ -10,21 +13,21 @@ use chrono::Datelike;
 use prost::Message;
 
 use proto;
-use proto::{PacketId, CombatTypeArgument, ForwardType, ProtEntityType};
+use proto::{CombatTypeArgument, ForwardType, PacketId, ProtEntityType};
 
 use packet_processor_macro::*;
 #[macro_use]
 use packet_processor::*;
-use serde_json::de::Read;
+use crate::utils::IdManager;
 use crate::{DatabaseManager, JsonManager, LuaManager};
 use rs_nodeconf::NodeConfig;
-use crate::utils::{IdManager};
 use rs_utils::TimeManager;
+use serde_json::de::Read;
 
 #[packet_processor(
-GetPlayerBlacklistReq,
-GetPlayerFriendListReq,
-GetPlayerSocialDetailReq,
+    GetPlayerBlacklistReq,
+    GetPlayerFriendListReq,
+    GetPlayerSocialDetailReq
 )]
 pub struct SocialSubsystem {
     packets_to_send_tx: PushSocket,
@@ -44,21 +47,42 @@ impl SocialSubsystem {
         return socs;
     }
 
-    fn process_get_player_blacklist(&self, user_id: u32, metadata: &proto::PacketHead, req: &proto::GetPlayerBlacklistReq, rsp: &mut proto::GetPlayerBlacklistRsp) {
+    fn process_get_player_blacklist(
+        &self,
+        user_id: u32,
+        metadata: &proto::PacketHead,
+        req: &proto::GetPlayerBlacklistReq,
+        rsp: &mut proto::GetPlayerBlacklistRsp,
+    ) {
         // TODO!
     }
 
-    fn process_get_player_friend_list(&self, user_id: u32, metadata: &proto::PacketHead, req: &proto::GetPlayerFriendListReq, rsp: &mut proto::GetPlayerFriendListRsp) {
+    fn process_get_player_friend_list(
+        &self,
+        user_id: u32,
+        metadata: &proto::PacketHead,
+        req: &proto::GetPlayerFriendListReq,
+        rsp: &mut proto::GetPlayerFriendListRsp,
+    ) {
         // TODO!
     }
 
-    fn process_get_player_social_detail(&self, user_id: u32, metadata: &proto::PacketHead, req: &proto::GetPlayerSocialDetailReq, rsp: &mut proto::GetPlayerSocialDetailRsp) {
+    fn process_get_player_social_detail(
+        &self,
+        user_id: u32,
+        metadata: &proto::PacketHead,
+        req: &proto::GetPlayerSocialDetailReq,
+        rsp: &mut proto::GetPlayerSocialDetailRsp,
+    ) {
         let user = match self.db.get_player_info(user_id) {
             Some(user) => user,
             None => panic!("User {} not found!", user_id),
         };
 
-        let props = self.db.get_player_props(user_id).unwrap_or_else(|| panic!("Failed to get properties for user {}!", user_id));
+        let props = self
+            .db
+            .get_player_props(user_id)
+            .unwrap_or_else(|| panic!("Failed to get properties for user {}!", user_id));
 
         let user_level = props[&(proto::PropType::PropPlayerLevel as u32)] as u32;
         let world_level = props[&(proto::PropType::PropPlayerWorldLevel as u32)] as u32;
@@ -74,11 +98,14 @@ impl SocialSubsystem {
             level: user_level,
             //avatar_id: user.avatar_id,
             signature: user.signature.clone(),
-            birthday: Some(proto::Birthday {month: user.birthday.month(), day: user.birthday.day()}),
+            birthday: Some(proto::Birthday {
+                month: user.birthday.month(),
+                day: user.birthday.day()
+            }),
             world_level: world_level,
             online_state: proto::FriendOnlineState::FriendOnline as i32, // TODO
-            is_friend: true, // TODO
-            is_mp_mode_available: true, // TODO
+            is_friend: true,                                             // TODO
+            is_mp_mode_available: true,                                  // TODO
             name_card_id: user.namecard_id,
             finish_achievement_num: user.finish_achievement_num, // TODO
             tower_floor_index: user.tower_floor_index as u32,

@@ -9,100 +9,99 @@ use packet_processor::*;
 
 use crate::collection;
 
-use sea_orm::{entity::*, error::*, query::*, DbConn, FromQueryResult, Database};
-use sea_orm::entity::prelude::*;
-use crate::JsonManager;
 use crate::utils::IdManager;
+use crate::JsonManager;
+use sea_orm::entity::prelude::*;
+use sea_orm::{entity::*, error::*, query::*, Database, DbConn, FromQueryResult};
 
-pub use super::player_info::Model as PlayerInfo;
 use super::player_info::Entity as PlayerInfoEntity;
+pub use super::player_info::Model as PlayerInfo;
 
-pub use super::avatar_info::Model as AvatarInfo;
 use super::avatar_info::Entity as AvatarInfoEntity;
+pub use super::avatar_info::Model as AvatarInfo;
 
-pub use super::avatar_weapon::Model as AvatarWeapon;
 use super::avatar_weapon::Entity as AvatarWeaponEntity;
+pub use super::avatar_weapon::Model as AvatarWeapon;
 
-pub use super::avatar_reliquary::Model as AvatarReliquary;
 use super::avatar_reliquary::Entity as AvatarReliquaryEntity;
+pub use super::avatar_reliquary::Model as AvatarReliquary;
 
-pub use super::scene_info::Model as SceneInfo;
 use super::scene_info::Entity as SceneInfoEntity;
+pub use super::scene_info::Model as SceneInfo;
 
-pub use super::team_info::Model as TeamInfo;
 use super::team_info::Entity as TeamInfoEntity;
+pub use super::team_info::Model as TeamInfo;
 
-pub use super::avatar_team_info::Model as AvatarTeamInfo;
 use super::avatar_team_info::Entity as AvatarTeamInfoEntity;
+pub use super::avatar_team_info::Model as AvatarTeamInfo;
 
-pub use super::team_selection_info::Model as TeamSelectionInfo;
 use super::team_selection_info::Entity as TeamSelectionInfoEntity;
+pub use super::team_selection_info::Model as TeamSelectionInfo;
 
-pub use super::player_prop::Model as PlayerProp;
 use super::player_prop::Entity as PlayerPropEntity;
+pub use super::player_prop::Model as PlayerProp;
 
-pub use super::avatar_prop::Model as AvatarProp;
 use super::avatar_prop::Entity as AvatarPropEntity;
+pub use super::avatar_prop::Model as AvatarProp;
 
-pub use super::avatar_fight_prop::Model as AvatarFightProp;
 use super::avatar_fight_prop::Entity as AvatarFightPropEntity;
+pub use super::avatar_fight_prop::Model as AvatarFightProp;
 
-pub use super::open_state::Model as OpenState;
 use super::open_state::Entity as OpenStateEntity;
+pub use super::open_state::Model as OpenState;
 
 /* Inventory */
-pub use super::material_info::Model as MaterialInfo;
 use super::material_info::Entity as MaterialInfoEntity;
+pub use super::material_info::Model as MaterialInfo;
 
-pub use super::reliquary_info::Model as ReliquaryInfo;
 use super::reliquary_info::Entity as ReliquaryInfoEntity;
+pub use super::reliquary_info::Model as ReliquaryInfo;
 
-pub use super::equip_info::Model as EquipInfo;
 use super::equip_info::Entity as EquipInfoEntity;
+pub use super::equip_info::Model as EquipInfo;
 
-pub use super::item_info::Model as ItemInfo;
 use super::item_info::Entity as ItemInfoEntity;
+pub use super::item_info::Model as ItemInfo;
 
-pub use super::weapon_affix_info::Model as WeaponAffixInfo;
 use super::weapon_affix_info::Entity as WeaponAffixInfoEntity;
+pub use super::weapon_affix_info::Model as WeaponAffixInfo;
 
-pub use super::reliquary_prop::Model as ReliquaryProp;
 use super::reliquary_prop::Entity as ReliquaryPropEntity;
+pub use super::reliquary_prop::Model as ReliquaryProp;
 
-pub use super::furniture_info::Model as FurnitureInfo;
 use super::furniture_info::Entity as FurnitureInfoEntity;
+pub use super::furniture_info::Model as FurnitureInfo;
 
-pub use super::trans_point::Model as TransPoint;
 use super::trans_point::Entity as TransPointEntity;
+pub use super::trans_point::Model as TransPoint;
 
 /*
-  This is used to convert async operations into sync ones
- */
+ This is used to convert async operations into sync ones
+*/
 trait Block {
     fn wait(self) -> <Self as futures::Future>::Output
-        where Self: Sized, Self: futures::Future
+    where
+        Self: Sized,
+        Self: futures::Future,
     {
         futures::executor::block_on(self)
     }
 }
 
-impl<F,T> Block for F
-    where F: futures::Future<Output = T>
-{}
+impl<F, T> Block for F where F: futures::Future<Output = T> {}
 
 /*
-  This is a hack around inserting a single item into database.
-  Sea-orm's implementation doesn't work if the primary key is not "autoincrement", which is our case.
- */
+ This is a hack around inserting a single item into database.
+ Sea-orm's implementation doesn't work if the primary key is not "autoincrement", which is our case.
+*/
 
 trait Insertable<A, E>: ActiveModelTrait<Entity = E>
-    where
-        A: ActiveModelTrait<Entity = E>,
-        E::Model: IntoActiveModel<A>,
-        E: EntityTrait,
+where
+    A: ActiveModelTrait<Entity = E>,
+    E::Model: IntoActiveModel<A>,
+    E: EntityTrait,
 {
-    fn put(self, db: &DatabaseConnection) -> Result<E::Model, DbErr>
-    {
+    fn put(self, db: &DatabaseConnection) -> Result<E::Model, DbErr> {
         // Enumerate every primary key and construct a list of equality conditions
         let conditions: Vec<_> = <Self::Entity as EntityTrait>::PrimaryKey::iter()
             .map(|key| {
@@ -113,7 +112,7 @@ trait Insertable<A, E>: ActiveModelTrait<Entity = E>
             .collect();
 
         // Put them all together
-        let mut condition =  Condition::all();
+        let mut condition = Condition::all();
 
         for c in conditions {
             condition = condition.add(c);
@@ -125,32 +124,37 @@ trait Insertable<A, E>: ActiveModelTrait<Entity = E>
 
         match item {
             Some(item) => Ok(item), //Ok(item.into_active_model()),
-            None => Err(DbErr::Custom(format!("Failed to find inserted item: {:?}", condition)))
+            None => Err(DbErr::Custom(format!(
+                "Failed to find inserted item: {:?}",
+                condition
+            ))),
         }
     }
 }
 
-impl<A,E> Insertable<A,E> for A
-    where
-        A: ActiveModelTrait<Entity = E>,
-        E::Model: IntoActiveModel<A>,
-        E: EntityTrait,
-{}
+impl<A, E> Insertable<A, E> for A
+where
+    A: ActiveModelTrait<Entity = E>,
+    E::Model: IntoActiveModel<A>,
+    E: EntityTrait,
+{
+}
 
 /*
-  This is another hack to update all the fields of the record.
-  By default, Sea ORM only updates fields that are changed in ActiveModel.
-  As it is much more convenient to pass Model instead of ActiveModel around, we need this hack.
- */
+ This is another hack to update all the fields of the record.
+ By default, Sea ORM only updates fields that are changed in ActiveModel.
+ As it is much more convenient to pass Model instead of ActiveModel around, we need this hack.
+*/
 
 trait FullyUpdateable<A, E>: ActiveModelTrait<Entity = E>
-    where
-        A: ActiveModelTrait<Entity = E>,
-        E::Model: IntoActiveModel<A>,
-        E: EntityTrait,
+where
+    A: ActiveModelTrait<Entity = E>,
+    E::Model: IntoActiveModel<A>,
+    E: EntityTrait,
 {
     fn full_update(mut self, db: &DatabaseConnection) -> Result<E::Model, DbErr>
-        where <E as sea_orm::EntityTrait>::Model: sea_orm::IntoActiveModel<Self>
+    where
+        <E as sea_orm::EntityTrait>::Model: sea_orm::IntoActiveModel<Self>,
     {
         for col in <<E as EntityTrait>::Column>::iter() {
             let val = self.get(col);
@@ -164,16 +168,17 @@ trait FullyUpdateable<A, E>: ActiveModelTrait<Entity = E>
     }
 }
 
-impl<A,E> FullyUpdateable<A,E> for A
-    where
-        A: ActiveModelTrait<Entity = E>,
-        E::Model: IntoActiveModel<A>,
-        E: EntityTrait,
-{}
+impl<A, E> FullyUpdateable<A, E> for A
+where
+    A: ActiveModelTrait<Entity = E>,
+    E::Model: IntoActiveModel<A>,
+    E: EntityTrait,
+{
+}
 
 /*
-  Database manager itself
- */
+ Database manager itself
+*/
 
 #[derive(Debug)]
 pub struct DatabaseManager {
@@ -191,11 +196,14 @@ impl DatabaseManager {
 
     pub fn get_player_info(&self, uid: u32) -> Option<PlayerInfo> {
         match PlayerInfoEntity::find_by_id(uid).one(&self.db).wait() {
-            Err(_) => { println!("DB ERROR!"); None },
+            Err(_) => {
+                println!("DB ERROR!");
+                None
+            }
             Ok(p_info) => p_info,
         }
     }
-/*
+    /*
     pub fn _get_player_info(&self, uid: u32) -> Option<PlayerInfo> {
         Some(PlayerInfo {
             uid: uid,
@@ -209,7 +217,7 @@ impl DatabaseManager {
             avatar_id: 10000007,
         })
     }*/
-/*
+    /*
     pub fn _get_player_props(&self, uid: u32) -> Option<HashMap<u32, i64>> {
         Some(collection! {
             //proto::PropType::PropIsSpringAutoUse as u32 => 1,
@@ -229,7 +237,9 @@ impl DatabaseManager {
 
     pub fn get_player_props(&self, uid: u32) -> Option<HashMap<u32, i64>> {
         let props = match PlayerPropEntity::find_by_id(uid).all(&self.db).wait() {
-            Err(_) => { panic!("DB ERROR!") },
+            Err(_) => {
+                panic!("DB ERROR!")
+            }
             Ok(p_info) => p_info,
         };
 
@@ -256,16 +266,20 @@ impl DatabaseManager {
     }
 
     fn get_player_prop(&self, uid: u32, prop_id: u32) -> Option<i64> {
-        match PlayerPropEntity::find().filter(
+        match PlayerPropEntity::find()
+            .filter(
                 Condition::all()
                     .add(super::player_prop::Column::Uid.eq(uid))
-                    .add(super::player_prop::Column::PropId.eq(prop_id))
-        ).one(&self.db).wait() {
+                    .add(super::player_prop::Column::PropId.eq(prop_id)),
+            )
+            .one(&self.db)
+            .wait()
+        {
             Ok(prop) => Some(prop?.prop_value), // Returns None if prop is none
             Err(_) => panic!("DB ERROR!"),
         }
     }
-/*
+    /*
     pub fn _get_avatar_props(&self, guid: u64) -> Option<HashMap<u32, i64>> {
         let map = collection! {
             //proto::PropType::PropExp as u32 => 0,
@@ -280,7 +294,9 @@ impl DatabaseManager {
 
     pub fn get_avatar_props(&self, guid: i64) -> Option<HashMap<u32, i64>> {
         let props = match AvatarPropEntity::find_by_id(guid).all(&self.db).wait() {
-            Err(_) => { panic!("DB ERROR!") },
+            Err(_) => {
+                panic!("DB ERROR!")
+            }
             Ok(p_info) => p_info,
         };
 
@@ -295,18 +311,22 @@ impl DatabaseManager {
     pub fn get_avatar_equip(&self, guid: i64) -> Option<Vec<i64>> {
         //let equip = vec![IdManager::get_guid_by_uid_and_id(AuthManager::SPOOFED_PLAYER_UID, Self::SPOOFED_WEAPON_ID) as i64];
         let weapons = match AvatarWeaponEntity::find_by_id(guid).one(&self.db).wait() {
-            Err(_) => { panic!("DB ERROR!") },
+            Err(_) => {
+                panic!("DB ERROR!")
+            }
             Ok(weapon) => match weapon {
                 None => {
                     println!("WARNING: no weapon for avatar {}!", guid);
                     vec![]
-                },
+                }
                 Some(weapon) => vec![weapon.weapon_guid],
             },
         };
 
         let relics = match AvatarReliquaryEntity::find_by_id(guid).all(&self.db).wait() {
-            Err(_) => { panic!("DB ERROR!") },
+            Err(_) => {
+                panic!("DB ERROR!")
+            }
             Ok(relics) => relics,
         };
 
@@ -317,7 +337,7 @@ impl DatabaseManager {
         return Some(equip);
     }
 
-    pub fn get_skill_levels(&self, guid: i64) -> Option<HashMap<u32,u32>> {
+    pub fn get_skill_levels(&self, guid: i64) -> Option<HashMap<u32, u32>> {
         let map = collection! {
             10068 => 3,
             100553 => 3,
@@ -386,14 +406,13 @@ impl DatabaseManager {
 
          */
         let props = match AvatarFightPropEntity::find_by_id(guid).all(&self.db).wait() {
-            Err(e) => { panic!("DB ERROR {}: {}!", guid, e) },
+            Err(e) => {
+                panic!("DB ERROR {}: {}!", guid, e)
+            }
             Ok(props) => props,
         };
 
-        let props = props
-            .into_iter()
-            .map(|p| (p.prop_id, p.value))
-            .collect();
+        let props = props.into_iter().map(|p| (p.prop_id, p.value)).collect();
 
         return Some(props);
     }
@@ -436,18 +455,17 @@ impl DatabaseManager {
 
          */
         let states = match OpenStateEntity::find_by_id(uid).all(&self.db).wait() {
-            Err(_) => { panic!("DB ERROR!") },
+            Err(_) => {
+                panic!("DB ERROR!")
+            }
             Ok(states) => states,
         };
 
-        let states = states
-            .into_iter()
-            .map(|s| (s.state_id, s.value))
-            .collect();
+        let states = states.into_iter().map(|s| (s.state_id, s.value)).collect();
 
         return Some(states);
     }
-/*
+    /*
     pub fn _get_inventory(&self, uid: u32) -> Option<Vec<proto::Item>> {
         let mut weapon = proto::Weapon::default();
         weapon.level = 70;
@@ -467,40 +485,50 @@ impl DatabaseManager {
     }*/
 
     pub fn get_items_by_item_id(&self, uid: u32, item_id: u32) -> Vec<ItemInfo> {
-        match ItemInfoEntity::find().filter(
-            Condition::all()
-                .add(super::item_info::Column::Uid.eq(uid))
-                .add(super::item_info::Column::ItemId.eq(item_id))
-        ).all(&self.db).wait() {
-            Err(e) => { panic!("DB ERROR: {}!", e) },
+        match ItemInfoEntity::find()
+            .filter(
+                Condition::all()
+                    .add(super::item_info::Column::Uid.eq(uid))
+                    .add(super::item_info::Column::ItemId.eq(item_id)),
+            )
+            .all(&self.db)
+            .wait()
+        {
+            Err(e) => {
+                panic!("DB ERROR: {}!", e)
+            }
             Ok(data) => data,
         }
     }
 
     pub fn get_inventory(&self, uid: u32) -> Option<Vec<proto::Item>> {
         /*
-         Inventory item can be of three types: material, equip and furniture
-         Equip is further divided into relic and weapon
-         Sp we need to get:
-         1) Materials
-         2) Furniture
-         3) Relics (+their properties)
-         4) Weapons (+their affices)
-         */
+        Inventory item can be of three types: material, equip and furniture
+        Equip is further divided into relic and weapon
+        Sp we need to get:
+        1) Materials
+        2) Furniture
+        3) Relics (+their properties)
+        4) Weapons (+their affices)
+        */
 
-        let request = ItemInfoEntity::find().filter(
-            Condition::all()
-                .add(super::item_info::Column::Uid.eq(uid)
-                )).all(&self.db).wait();
+        let request = ItemInfoEntity::find()
+            .filter(Condition::all().add(super::item_info::Column::Uid.eq(uid)))
+            .all(&self.db)
+            .wait();
 
         let items = match request {
-            Err(e) => { panic!("DB ERROR: {}!", e) },
+            Err(e) => {
+                panic!("DB ERROR: {}!", e)
+            }
             Ok(items) => items,
         };
 
-        let materials: Vec<(ItemInfo, MaterialInfo)> = self.find_related_to_items(&items, MaterialInfoEntity);
+        let materials: Vec<(ItemInfo, MaterialInfo)> =
+            self.find_related_to_items(&items, MaterialInfoEntity);
 
-        let furniture: Vec<(ItemInfo, FurnitureInfo)> = self.find_related_to_items(&items, FurnitureInfoEntity);
+        let furniture: Vec<(ItemInfo, FurnitureInfo)> =
+            self.find_related_to_items(&items, FurnitureInfoEntity);
 
         let equip: Vec<(ItemInfo, EquipInfo)> = self.find_related_to_items(&items, EquipInfoEntity);
 
@@ -528,14 +556,19 @@ impl DatabaseManager {
         let equip = equip.into_iter().map(|(ii, ei)| {
             let detail = if self.jm.is_item_reliquary(ii.item_id) {
                 let reliquary = match ei.find_related(ReliquaryInfoEntity).one(&self.db).wait() {
-                    Err(e) => { panic!("DB ERROR: {}!", e) },
+                    Err(e) => {
+                        panic!("DB ERROR: {}!", e)
+                    }
                     Ok(data) => {
                         let data = data.unwrap();
 
-                        let props = match data.find_related(ReliquaryPropEntity).all(&self.db).wait() {
-                            Err(e) => { panic!("DB ERROR: {}!", e) },
-                            Ok(data) => data.into_iter().map(|rp| rp.prop_id).collect(),
-                        };
+                        let props =
+                            match data.find_related(ReliquaryPropEntity).all(&self.db).wait() {
+                                Err(e) => {
+                                    panic!("DB ERROR: {}!", e)
+                                }
+                                Ok(data) => data.into_iter().map(|rp| rp.prop_id).collect(),
+                            };
 
                         Some(build!(Reliquary {
                             level: ei.level,
@@ -544,24 +577,32 @@ impl DatabaseManager {
                             main_prop_id: data.main_prop_id,
                             append_prop_id_list: props,
                         }))
-                    },
+                    }
                 };
 
                 Some(proto::equip::Detail::Reliquary(reliquary.unwrap()))
             } else if self.jm.is_item_weapon(ii.item_id) {
                 let weapon = match ei.find_related(WeaponAffixInfoEntity).all(&self.db).wait() {
-                    Err(e) => { panic!("DB ERROR: {}!", e) },
+                    Err(e) => {
+                        panic!("DB ERROR: {}!", e)
+                    }
                     Ok(data) => Some(build!(Weapon {
                         level: ei.level,
                         promote_level: ei.promote_level,
                         exp: ei.exp,
-                        affix_map: data.into_iter().map(|wai| (wai.affix_id, wai.affix_value)).collect(),
+                        affix_map: data
+                            .into_iter()
+                            .map(|wai| (wai.affix_id, wai.affix_value))
+                            .collect(),
                     })),
                 };
 
                 Some(proto::equip::Detail::Weapon(weapon.unwrap()))
             } else {
-                panic!("Equip item {} is not recognized as a weapon or relic: {:?} {:?}!", ii.guid, ii, ei)
+                panic!(
+                    "Equip item {} is not recognized as a weapon or relic: {:?} {:?}!",
+                    ii.guid, ii, ei
+                )
             };
 
             build!(Item {
@@ -574,17 +615,17 @@ impl DatabaseManager {
             })
         });
 
-        return Some(
-            materials.chain(furniture).chain(equip).collect()
-        );
+        return Some(materials.chain(furniture).chain(equip).collect());
     }
 
     pub fn get_item_count_by_item_id(&self, uid: u32, item_id: u32) -> u32 {
         let items = self.get_items_by_item_id(uid, item_id);
 
-        let materials: Vec<(ItemInfo, MaterialInfo)> = self.find_related_to_items(&items, MaterialInfoEntity);
+        let materials: Vec<(ItemInfo, MaterialInfo)> =
+            self.find_related_to_items(&items, MaterialInfoEntity);
 
-        let furniture: Vec<(ItemInfo, FurnitureInfo)> = self.find_related_to_items(&items, FurnitureInfoEntity);
+        let furniture: Vec<(ItemInfo, FurnitureInfo)> =
+            self.find_related_to_items(&items, FurnitureInfoEntity);
 
         let equip: Vec<(ItemInfo, EquipInfo)> = self.find_related_to_items(&items, EquipInfoEntity);
 
@@ -605,20 +646,27 @@ impl DatabaseManager {
         return 0;
     }
 
-    fn find_related_to_items<T: sea_orm::EntityTrait>(&self, items: &Vec<ItemInfo>, entity_type: T) -> Vec<(ItemInfo, T::Model)>
-        where
-            ItemInfoEntity: sea_orm::Related<T>
+    fn find_related_to_items<T: sea_orm::EntityTrait>(
+        &self,
+        items: &Vec<ItemInfo>,
+        entity_type: T,
+    ) -> Vec<(ItemInfo, T::Model)>
+    where
+        ItemInfoEntity: sea_orm::Related<T>,
     {
-        return items.into_iter()
+        return items
+            .into_iter()
             .map(|item| {
                 let ret = match item.find_related(entity_type).one(&self.db).wait() {
-                    Err(e) => { panic!("DB ERROR: {}!", e) },
+                    Err(e) => {
+                        panic!("DB ERROR: {}!", e)
+                    }
                     Ok(data) => data,
                 };
 
                 match ret {
                     None => None,
-                    Some(data) => Some( (item.clone(), data) ),
+                    Some(data) => Some((item.clone(), data)),
                 }
             })
             .filter(|x| !x.is_none())
@@ -628,13 +676,15 @@ impl DatabaseManager {
 
     pub fn get_avatars(&self, uid: u32) -> Option<Vec<AvatarInfo>> {
         let avatars = match AvatarInfoEntity::find_by_id(uid).all(&self.db).wait() {
-            Err(_) => { panic!("DB ERROR!") },
+            Err(_) => {
+                panic!("DB ERROR!")
+            }
             Ok(avatars) => avatars,
         };
 
         return Some(avatars);
     }
-/*
+    /*
     pub fn _get_avatars(&self, uid: u32) -> Option<Vec<AvatarInfo>> {
         let ai = AvatarInfo {
             uid: uid,
@@ -650,14 +700,20 @@ impl DatabaseManager {
     }*/
 
     pub fn get_avatar(&self, guid: i64) -> Option<AvatarInfo> {
-        let avatar = match AvatarInfoEntity::find().filter(super::avatar_info::Column::Guid.eq(guid)).one(&self.db).wait() {
-            Err(_) => { panic!("DB ERROR!") },
+        let avatar = match AvatarInfoEntity::find()
+            .filter(super::avatar_info::Column::Guid.eq(guid))
+            .one(&self.db)
+            .wait()
+        {
+            Err(_) => {
+                panic!("DB ERROR!")
+            }
             Ok(avatar) => avatar,
         };
 
         return avatar;
     }
-/*
+    /*
     pub fn _get_avatar(&self, guid: u64) -> Option<AvatarInfo> {
         let ai = AvatarInfo {
             uid: AuthManager::SPOOFED_PLAYER_UID, // TODO!
@@ -669,23 +725,25 @@ impl DatabaseManager {
 
         return Some(ai);
     }*/
-/*
-    pub fn _get_player_scene_info(&self, uid: u32) -> Option<SceneInfo> {
-        let si = SceneInfo {
-            uid: uid,
-            scene_id: Self::SPOOFED_SCENE_ID,
-            scene_token: Self::SPOOFED_SCENE_TOKEN,
-            pos_x: -3400.0,
-            pos_y: 233.0,
-            pos_z: -3427.6,
-        };
+    /*
+        pub fn _get_player_scene_info(&self, uid: u32) -> Option<SceneInfo> {
+            let si = SceneInfo {
+                uid: uid,
+                scene_id: Self::SPOOFED_SCENE_ID,
+                scene_token: Self::SPOOFED_SCENE_TOKEN,
+                pos_x: -3400.0,
+                pos_y: 233.0,
+                pos_z: -3427.6,
+            };
 
-        return Some(si);
-    }
-*/
+            return Some(si);
+        }
+    */
     pub fn get_player_scene_info(&self, uid: u32) -> Option<SceneInfo> {
         let scene_info = match SceneInfoEntity::find_by_id(uid).one(&self.db).wait() {
-            Err(_) => { panic!("DB ERROR!") },
+            Err(_) => {
+                panic!("DB ERROR!")
+            }
             Ok(info) => info,
         };
 
@@ -787,8 +845,13 @@ impl DatabaseManager {
 
         return Some(tsi);
          */
-        let tsi = match TeamSelectionInfoEntity::find_by_id(uid).one(&self.db).wait() {
-            Err(_) => { panic!("DB ERROR!") },
+        let tsi = match TeamSelectionInfoEntity::find_by_id(uid)
+            .one(&self.db)
+            .wait()
+        {
+            Err(_) => {
+                panic!("DB ERROR!")
+            }
             Ok(info) => info,
         };
 
@@ -818,7 +881,7 @@ impl DatabaseManager {
 
         let eq_info: EquipInfo = eq_info.put(&self.db).unwrap();
 
-        let it_info  = super::item_info::ActiveModel {
+        let it_info = super::item_info::ActiveModel {
             uid: ActiveValue::Set(uid),
             guid: ActiveValue::Set(new_guid as i64),
             item_id: ActiveValue::Set(item_id),
@@ -827,7 +890,9 @@ impl DatabaseManager {
         let it_info: ItemInfo = it_info.put(&self.db).unwrap();
 
         let detail = if self.jm.is_item_weapon(item_id) {
-            let affixes: Vec<_> = self.jm.weapons[&item_id].skill_affix.iter()
+            let affixes: Vec<_> = self.jm.weapons[&item_id]
+                .skill_affix
+                .iter()
                 .filter(|a| **a != 0)
                 .map(|a| super::weapon_affix_info::ActiveModel {
                     guid: ActiveValue::Set(new_guid as i64),
@@ -837,14 +902,20 @@ impl DatabaseManager {
                 .collect();
 
             if affixes.len() > 0 {
-                WeaponAffixInfoEntity::insert_many(affixes.clone()).exec(&self.db).wait().unwrap();
+                WeaponAffixInfoEntity::insert_many(affixes.clone())
+                    .exec(&self.db)
+                    .wait()
+                    .unwrap();
             }
 
             let weapon = build!(Weapon {
                 level: eq_info.level,
                 promote_level: eq_info.promote_level,
                 exp: eq_info.exp,
-                affix_map: affixes.into_iter().map(|wai| (wai.affix_id.unwrap(), wai.affix_value.unwrap())).collect(),
+                affix_map: affixes
+                    .into_iter()
+                    .map(|wai| (wai.affix_id.unwrap(), wai.affix_value.unwrap()))
+                    .collect(),
             });
 
             Some(proto::equip::Detail::Weapon(weapon))
@@ -859,7 +930,9 @@ impl DatabaseManager {
 
             let re_info: ReliquaryInfo = re_info.put(&self.db).unwrap();
 
-            let sub_stats_v: Vec<_> = sub_stats.clone().into_iter()
+            let sub_stats_v: Vec<_> = sub_stats
+                .clone()
+                .into_iter()
                 .map(|s| super::reliquary_prop::ActiveModel {
                     guid: ActiveValue::Set(new_guid as i64),
                     prop_id: ActiveValue::Set(s),
@@ -867,7 +940,10 @@ impl DatabaseManager {
                 .collect();
 
             if sub_stats_v.len() > 0 {
-                ReliquaryPropEntity::insert_many(sub_stats_v).exec(&self.db).wait().unwrap();
+                ReliquaryPropEntity::insert_many(sub_stats_v)
+                    .exec(&self.db)
+                    .wait()
+                    .unwrap();
             }
 
             let reliquary = build!(Reliquary {
@@ -880,7 +956,10 @@ impl DatabaseManager {
 
             Some(proto::equip::Detail::Reliquary(reliquary))
         } else {
-            panic!("Equip item {} is not recognized as a weapon or relic!", item_id)
+            panic!(
+                "Equip item {} is not recognized as a weapon or relic!",
+                item_id
+            )
         };
 
         let item = build!(Item {
@@ -905,7 +984,7 @@ impl DatabaseManager {
             // Create new record
             let new_guid = self.get_new_guid(uid);
 
-            let it_info  = super::item_info::ActiveModel {
+            let it_info = super::item_info::ActiveModel {
                 uid: ActiveValue::Set(uid),
                 guid: ActiveValue::Set(new_guid as i64),
                 item_id: ActiveValue::Set(item_id),
@@ -949,7 +1028,11 @@ impl DatabaseManager {
             let item = &items_list[0];
 
             let detail = if self.jm.is_item_material(item_id) {
-                let mt_info = item.find_related(MaterialInfoEntity).one(&self.db).wait().unwrap();
+                let mt_info = item
+                    .find_related(MaterialInfoEntity)
+                    .one(&self.db)
+                    .wait()
+                    .unwrap();
 
                 let mut mt_info: super::material_info::ActiveModel = mt_info.unwrap().into();
                 mt_info.count = ActiveValue::Set((mt_info.count.unwrap() as i32 + count) as u32);
@@ -960,7 +1043,11 @@ impl DatabaseManager {
                     count: mt_info.count,
                 }))
             } else {
-                let fr_info = item.find_related(FurnitureInfoEntity).one(&self.db).wait().unwrap();
+                let fr_info = item
+                    .find_related(FurnitureInfoEntity)
+                    .one(&self.db)
+                    .wait()
+                    .unwrap();
 
                 let mut fr_info: super::furniture_info::ActiveModel = fr_info.unwrap().into();
                 fr_info.count = ActiveValue::Set((fr_info.count.unwrap() as i32 + count) as u32);
@@ -973,7 +1060,10 @@ impl DatabaseManager {
             };
             (item.guid as u64, detail)
         } else {
-            panic!("Database is in inconsistent shape: multiple items of {}", item_id);
+            panic!(
+                "Database is in inconsistent shape: multiple items of {}",
+                item_id
+            );
         };
 
         let item = build!(Item {
@@ -1009,7 +1099,8 @@ impl DatabaseManager {
         let res = ItemInfoEntity::delete_many()
             .filter(super::item_info::Column::Guid.eq(guid))
             .exec(&self.db)
-            .wait().unwrap();
+            .wait()
+            .unwrap();
 
         assert!(res.rows_affected == 1);
 
@@ -1019,35 +1110,40 @@ impl DatabaseManager {
         let res = FurnitureInfoEntity::delete_many()
             .filter(super::furniture_info::Column::Guid.eq(guid))
             .exec(&self.db)
-            .wait().unwrap();
+            .wait()
+            .unwrap();
 
         assert!(res.rows_affected <= 1);
 
         let res = MaterialInfoEntity::delete_many()
             .filter(super::material_info::Column::Guid.eq(guid))
             .exec(&self.db)
-            .wait().unwrap();
+            .wait()
+            .unwrap();
 
         assert!(res.rows_affected <= 1);
 
         let res = ReliquaryInfoEntity::delete_many()
             .filter(super::reliquary_info::Column::Guid.eq(guid))
             .exec(&self.db)
-            .wait().unwrap();
+            .wait()
+            .unwrap();
 
         assert!(res.rows_affected <= 1);
 
         let res = ReliquaryPropEntity::delete_many()
             .filter(super::reliquary_prop::Column::Guid.eq(guid))
             .exec(&self.db)
-            .wait().unwrap();
+            .wait()
+            .unwrap();
 
         // No assert here
 
         let res = WeaponAffixInfoEntity::delete_many()
             .filter(super::weapon_affix_info::Column::Guid.eq(guid))
             .exec(&self.db)
-            .wait().unwrap();
+            .wait()
+            .unwrap();
 
         // No assert here
     }
@@ -1057,11 +1153,14 @@ impl DatabaseManager {
             .filter(
                 Condition::all()
                     .add(super::trans_point::Column::Uid.eq(user_id))
-                    .add(super::trans_point::Column::SceneId.eq(scene_id))
+                    .add(super::trans_point::Column::SceneId.eq(scene_id)),
             )
-            .all(&self.db).wait()
+            .all(&self.db)
+            .wait()
         {
-            Err(_) => { panic!("DB ERROR!") },
+            Err(_) => {
+                panic!("DB ERROR!")
+            }
             Ok(points) => points.iter().map(|x| x.point_id).collect(),
         };
 

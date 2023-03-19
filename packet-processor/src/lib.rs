@@ -2,32 +2,45 @@ pub trait PacketProcessor {
     fn register(&mut self);
     fn supported(&self) -> Vec<proto::PacketId>;
     fn is_supported(&self, packet_id: &proto::PacketId) -> bool;
-    fn process(&mut self, user_id: u32, packet_id: proto::PacketId, metadata: Vec<u8>, data: Vec<u8>);
+    fn process(
+        &mut self,
+        user_id: u32,
+        packet_id: proto::PacketId,
+        metadata: Vec<u8>,
+        data: Vec<u8>,
+    );
 }
 
 #[macro_export]
 macro_rules! register_callback {
     ($hashmap:ident, $req:ident, $rsp:ident, $handler:ident) => {
-        $hashmap.insert(proto::PacketId::$req, |slef: &mut Self, user_id: u32, metadata: &proto::PacketHead, data: Vec<u8>| {
-            let req = proto::$req::decode(&mut std::io::Cursor::new(data)).unwrap();
-            let mut rsp = proto::$rsp::default();
+        $hashmap.insert(
+            proto::PacketId::$req,
+            |slef: &mut Self, user_id: u32, metadata: &proto::PacketHead, data: Vec<u8>| {
+                let req = proto::$req::decode(&mut std::io::Cursor::new(data)).unwrap();
+                let mut rsp = proto::$rsp::default();
 
-            println!("Received REQ {:?}", req);
+                println!("Received REQ {:?}", req);
 
-            slef.$handler(user_id, &metadata, &req, &mut rsp);
+                slef.$handler(user_id, &metadata, &req, &mut rsp);
 
-            let message = IpcMessage::new_from_proto(proto::PacketId::$rsp, user_id, metadata, &rsp);
-            slef.packets_to_send_tx.send(message).unwrap();
-        });
+                let message =
+                    IpcMessage::new_from_proto(proto::PacketId::$rsp, user_id, metadata, &rsp);
+                slef.packets_to_send_tx.send(message).unwrap();
+            },
+        );
     };
 
     ($hashmap:ident, $notify:ident, $handler:ident) => {
-        $hashmap.insert(proto::PacketId::$notify, |slef: &mut Self, user_id: u32, metadata: &proto::PacketHead, data: Vec<u8>| {
-            let notify = proto::$notify::decode(&mut std::io::Cursor::new(data)).unwrap();
-            println!("Received NOTIFY {:?}", notify);
+        $hashmap.insert(
+            proto::PacketId::$notify,
+            |slef: &mut Self, user_id: u32, metadata: &proto::PacketHead, data: Vec<u8>| {
+                let notify = proto::$notify::decode(&mut std::io::Cursor::new(data)).unwrap();
+                println!("Received NOTIFY {:?}", notify);
 
-            slef.$handler(user_id, &metadata, &notify);
-        });
+                slef.$handler(user_id, &metadata, &notify);
+            },
+        );
     };
 }
 

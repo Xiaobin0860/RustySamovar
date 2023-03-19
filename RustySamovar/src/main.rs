@@ -9,21 +9,21 @@ use std::thread;
 
 use rs_nodeconf::NodeConfig;
 
-mod server;
-mod utils;
 mod dbmanager;
+mod entitymanager;
 mod jsonmanager;
 mod luamanager;
-mod entitymanager;
+mod server;
+mod utils;
 
 mod subsystems;
 
+use crate::server::GameServer;
 use dbmanager::DatabaseManager;
+use entitymanager::EntityManager;
 use jsonmanager::JsonManager;
 use luamanager::LuaManager;
 use subsystems::EntitySubsystem;
-use entitymanager::EntityManager;
-use crate::server::GameServer;
 
 fn main() {
     //pretty_env_logger::init();
