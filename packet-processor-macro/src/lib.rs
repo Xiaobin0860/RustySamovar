@@ -1,3 +1,6 @@
+//! # packet-processor-macro
+//! This crate provides a macro to simplify the creation of packet processors.
+
 extern crate convert_case;
 extern crate regex;
 
@@ -7,6 +10,7 @@ use quote::quote;
 use regex::Regex;
 use syn::{parse_macro_input, AttributeArgs};
 
+// Returns a string representation of a nested meta.
 fn get_nested_meta_name(nested_meta: &syn::NestedMeta) -> String {
     match nested_meta {
         syn::NestedMeta::Meta(meta) => match meta {
@@ -19,6 +23,8 @@ fn get_nested_meta_name(nested_meta: &syn::NestedMeta) -> String {
     }
 }
 
+/// `packet_processor` macro is used to generate a packet processor.
+/// it implements `PacketProcessor` trait
 #[proc_macro_attribute]
 pub fn packet_processor(args: TokenStream, input: TokenStream) -> TokenStream {
     let args = parse_macro_input!(args as AttributeArgs);
@@ -43,6 +49,7 @@ pub fn packet_processor(args: TokenStream, input: TokenStream) -> TokenStream {
                     struct_name = Some(ident.to_string());
                     r
                 }
+                // add `packet_callbacks` field to the struct
                 &proc_macro::TokenTree::Group(ref group)
                     if group.delimiter() == proc_macro::Delimiter::Brace
                         && found_struct == true =>
@@ -69,6 +76,7 @@ pub fn packet_processor(args: TokenStream, input: TokenStream) -> TokenStream {
         })
         .collect();
 
+    // get macro arguments, which are packet names
     let args = args.clone().into_iter().map(|a| get_nested_meta_name(&a));
     let re = Regex::new(r"Req$").unwrap();
 
@@ -78,10 +86,12 @@ pub fn packet_processor(args: TokenStream, input: TokenStream) -> TokenStream {
         .clone()
         .into_iter()
         .map(|a| re.replace_all(&a, "Rsp").to_string());
+    // request handler names, process_request_name
     let req_handler = request
         .clone()
         .into_iter()
         .map(|a| format!("process_{}", &a[..a.len() - 3].to_case(Case::Snake)));
+    // notify handler names, process_notify_name
     let notify_handler = notify
         .clone()
         .into_iter()
@@ -104,7 +114,9 @@ pub fn packet_processor(args: TokenStream, input: TokenStream) -> TokenStream {
         impl PacketProcessor for #struct_name {
             fn register(&mut self) {
                 let mut callbacks = &mut self.packet_callbacks;
+                // Register req_handler for each request,response
                 #(register_callback!(callbacks, #request, #response, #req_handler);)*
+                // Register notify_handler for each notify
                 #(register_callback!(callbacks, #notify, #notify_handler);)*
             }
 

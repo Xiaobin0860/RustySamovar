@@ -1,7 +1,15 @@
+//! # packet-processor
+//! This crate provides a simple way to handle packets in a server.
+
+/// `PacketProcessor` is the main trait of the crate. It provides a way to register callbacks for packets.
 pub trait PacketProcessor {
+    /// Registers all callbacks for packets.
     fn register(&mut self);
+    /// Returns a list of supported packets.
     fn supported(&self) -> Vec<proto::PacketId>;
+    /// Returns true if the packet is supported.
     fn is_supported(&self, packet_id: &proto::PacketId) -> bool;
+    /// Processes a packet.
     fn process(
         &mut self,
         user_id: u32,
@@ -11,6 +19,7 @@ pub trait PacketProcessor {
     );
 }
 
+/// register_callback! macro is used to register a callback for a packet.
 #[macro_export]
 macro_rules! register_callback {
     ($hashmap:ident, $req:ident, $rsp:ident, $handler:ident) => {
@@ -44,6 +53,7 @@ macro_rules! register_callback {
     };
 }
 
+/// build_and_send! macro is used to build a packet and send it out
 #[macro_export]
 macro_rules! build_and_send {
     ($self:ident, $user_id: ident, $metadata:ident, $id:ident { $($i:ident : $e:expr,)* }) => {{
@@ -58,6 +68,7 @@ macro_rules! build_and_send {
     }};
 }
 
+/// build! macro is used to build a packet
 #[macro_export]
 macro_rules! build {
     ($id:ident { $($i:ident : $e:expr,)* }) => {{
